@@ -1,0 +1,15 @@
+﻿{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "generaltools:item/swiss_knife"
+  },
+  "overrides": [
+    { "predicate": { "custom_model_data": 1 }, "model": "generaltools:item/swiss_knife_sword" },
+    { "predicate": { "custom_model_data": 2 }, "model": "generaltools:item/swiss_knife_pickaxe" },
+    { "predicate": { "custom_model_data": 3 }, "model": "generaltools:item/swiss_knife_axe" },
+    { "predicate": { "custom_model_data": 4 }, "model": "generaltools:item/swiss_knife_shovel" },
+    { "predicate": { "custom_model_data": 5 }, "model": "generaltools:item/swiss_knife_hoe" },
+    { "predicate": { "custom_model_data": 6 }, "model": "generaltools:item/swiss_knife_scissors" },
+    { "predicate": { "custom_model_data": 7 }, "model": "generaltools:item/swiss_knife_flint_and_steel" }
+  ]
+}

@@ -1,0 +1,6 @@
+﻿{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "generaltools:item/swiss_knife_scissors"
+  }
+}

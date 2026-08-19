@@ -1,0 +1,52 @@
+package com.example.examplemod;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+@Mod.EventBusSubscriber(modid = ExampleMod.MODID, value = Dist.CLIENT)
+public class ClientEvents
+{
+    private static int lastAutoMode = -1;
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event)
+    {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null)
+        {
+            lastAutoMode = -1;
+            return;
+        }
+        ItemStack mainHand = mc.player.getMainHandItem();
+        if (!(mainHand.getItem() instanceof SwissKnifeItem))
+        {
+            lastAutoMode = -1;
+            return;
+        }
+        if (SwissKnifeItem.getModeSetting(mainHand) != SwissKnifeItem.MODE_AUTO)
+        {
+            lastAutoMode = -1;
+            return;
+        }
+        // 自动模式：按目视方块即时切换贴图（创造模式挖掘不走 getDestroySpeed，故用射线检测兜底）
+        HitResult hit = mc.player.pick(5.0D, 1.0F, false);
+        if (hit.getType() == HitResult.Type.BLOCK)
+        {
+            BlockState state = mc.level.getBlockState(((BlockHitResult) hit).getBlockPos());
+            SwissKnifeItem.SwissKnifeMode mode = SwissKnifeItem.modeFor(state);
+            // 仅模式变化时写 NBT，减少重复写入
+            if (mode.id != lastAutoMode)
+            {
+                lastAutoMode = mode.id;
+                SwissKnifeItem.setMode(mainHand, mode);
+            }
+        }
+    }
+}
