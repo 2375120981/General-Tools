@@ -10,6 +10,7 @@
     { "predicate": { "custom_model_data": 4 }, "model": "generaltools:item/swiss_knife_shovel" },
     { "predicate": { "custom_model_data": 5 }, "model": "generaltools:item/swiss_knife_hoe" },
     { "predicate": { "custom_model_data": 6 }, "model": "generaltools:item/swiss_knife_scissors" },
-    { "predicate": { "custom_model_data": 7 }, "model": "generaltools:item/swiss_knife_flint_and_steel" }
+    { "predicate": { "custom_model_data": 7 }, "model": "generaltools:item/swiss_knife_flint_and_steel" },
+    { "predicate": { "custom_model_data": 8 }, "model": "generaltools:item/swiss_knife_wrench" }
   ]
 }

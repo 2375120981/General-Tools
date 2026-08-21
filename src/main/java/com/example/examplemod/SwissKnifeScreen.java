@@ -12,6 +12,7 @@ public class SwissKnifeScreen extends AbstractContainerScreen<SwissKnifeMenu>
 {
     private static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath("generaltools", "textures/gui/swiss_knife_gui.png");
     private static final ResourceLocation MODE_BUTTONS = ResourceLocation.fromNamespaceAndPath("generaltools", "textures/gui/swiss_knife_mode_buttons.png");
+    private static final ResourceLocation WRENCH_BUTTONS = ResourceLocation.fromNamespaceAndPath("generaltools", "textures/gui/swiss_knife_wrench_button.png");
 
     public SwissKnifeScreen(SwissKnifeMenu menu, Inventory playerInventory, Component title)
     {
@@ -32,6 +33,7 @@ public class SwissKnifeScreen extends AbstractContainerScreen<SwissKnifeMenu>
         addModeButton(5, 78, 18, 9, 37);   // 锄
         addModeButton(6, 96, 18, 9, 37);   // 剪刀
         addModeButton(7, 114, 18, 9, 37);  // 打火石
+        addModeButton(8, 66, 18, 18, 50);  // 扳手（18×18 正方形，与 AUTO 同行，单独一列）
     }
 
     private void addModeButton(int mode, int x, int width, int height, int y)
@@ -78,6 +80,13 @@ public class SwissKnifeScreen extends AbstractContainerScreen<SwissKnifeMenu>
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick)
         {
             boolean selected = SwissKnifeScreen.this.menu.modeData.get() == mode;
+            if (mode == 8)
+            {
+                // 扳手按钮：独立图集（54×18，三帧 18×18：普通/悬停/选中）
+                int u = selected ? 36 : (this.isHoveredOrFocused() ? 18 : 0);
+                guiGraphics.blit(WRENCH_BUTTONS, this.getX(), this.getY(), u, 0, this.width, this.height, 54, 18);
+                return;
+            }
             int u = selected ? 108 : (this.isHoveredOrFocused() ? 54 : 0);
             int v = this.mode == 0 ? 9 : 0;
             guiGraphics.blit(MODE_BUTTONS, this.getX(), this.getY(), u, v, this.width, this.height, 162, 27);

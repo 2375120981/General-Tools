@@ -2,7 +2,6 @@
   "item.generaltools.swiss_knife": "Swiss Knife",
   "itemGroup.generaltools.example_tab": "General Tools",
   "gui.generaltools.swiss_knife": "Swiss Knife",
-  "gui.generaltools.swiss_knife_hint": "Place tools in the slots to activate functions",
   "tooltip.generaltools.swiss_knife.title_text": "Currently equipped",
   "tooltip.generaltools.swiss_knife.empty": "Empty",
   "tooltip.generaltools.swiss_knife.sword": "Sword",
@@ -12,6 +11,8 @@
   "tooltip.generaltools.swiss_knife.hoe": "Hoe",
   "tooltip.generaltools.swiss_knife.scissors": "Scissors",
   "tooltip.generaltools.swiss_knife.flint_and_steel": "Flint and Steel",
+  "tooltip.generaltools.swiss_knife.wrench": "Wrench",
   "tooltip.generaltools.swiss_knife.mode": "Mode: %s",
-  "tooltip.generaltools.swiss_knife.auto": "Auto"
+  "tooltip.generaltools.swiss_knife.auto": "Auto",
+  "message.generaltools.swiss_knife.dismantle_blocked": "Too many contents, cannot dismantle"
 }

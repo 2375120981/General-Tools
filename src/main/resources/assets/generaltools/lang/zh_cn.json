@@ -2,7 +2,6 @@
   "item.generaltools.swiss_knife": "瑞士刀",
   "itemGroup.generaltools.example_tab": "通用工具",
   "gui.generaltools.swiss_knife": "瑞士刀",
-  "gui.generaltools.swiss_knife_hint": "在槽位中放入对应工具以激活功能",
   "tooltip.generaltools.swiss_knife.title_text": "当前已装备",
   "tooltip.generaltools.swiss_knife.empty": "空",
   "tooltip.generaltools.swiss_knife.sword": "剑",
@@ -12,6 +11,8 @@
   "tooltip.generaltools.swiss_knife.hoe": "锄",
   "tooltip.generaltools.swiss_knife.scissors": "剪刀",
   "tooltip.generaltools.swiss_knife.flint_and_steel": "打火石",
+  "tooltip.generaltools.swiss_knife.wrench": "扳手",
   "tooltip.generaltools.swiss_knife.mode": "模式：%s",
-  "tooltip.generaltools.swiss_knife.auto": "自动"
+  "tooltip.generaltools.swiss_knife.auto": "自动",
+  "message.generaltools.swiss_knife.dismantle_blocked": "内容物过多，无法拆除"
 }

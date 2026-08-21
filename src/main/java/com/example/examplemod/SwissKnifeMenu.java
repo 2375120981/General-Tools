@@ -58,7 +58,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
                 container.setItem(i, ItemStack.of(root.getCompound("slot_" + (i + 1))));
             }
         }
-        // 瑞士刀 5 个工具槽（剑/镐/斧/铲/锄）
+        // 瑞士刀 7 个工具槽（剑/镐/斧/铲/锄/剪刀/打火石）
         for (int i = 0; i < KNIFE_SLOTS; i++)
         {
             SwissKnifeSlot slot = new SwissKnifeSlot(container, i, 7 + i * 18, 17);

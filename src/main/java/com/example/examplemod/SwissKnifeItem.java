@@ -6,15 +6,19 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -31,9 +35,18 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RedstoneLampBlock;
+import net.minecraft.world.level.block.piston.PistonBaseBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.common.ToolAction;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.items.IItemHandler;
 
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
@@ -56,7 +69,7 @@ public class SwissKnifeItem extends Item
 
     public enum SwissKnifeMode
     {
-        NONE(0), SWORD(1), PICKAXE(2), AXE(3), SHOVEL(4), HOE(5), SCISSORS(6), FLINT_AND_STEEL(7);
+        NONE(0), SWORD(1), PICKAXE(2), AXE(3), SHOVEL(4), HOE(5), SCISSORS(6), FLINT_AND_STEEL(7), WRENCH(8);
 
         public final int id;
 
@@ -90,7 +103,7 @@ public class SwissKnifeItem extends Item
         return super.use(level, player, hand);
     }
 
-    // ---------- 对方块右键：临时伪装成槽位工具执行其 useOn（完整继承功能/附魔/充能），潜行时不再回退打开 GUI ----------
+    // ---------- 对方块右键：扳手（旋转/拆除）或临时伪装成槽位工具执行其 useOn（完整继承功能/附魔/充能） ----------
     @Override
     public InteractionResult useOn(UseOnContext context)
     {
@@ -102,15 +115,36 @@ public class SwissKnifeItem extends Item
         BlockState state = context.getLevel().getBlockState(context.getClickedPos());
         ItemStack knife = context.getItemInHand();
 
+        boolean sneaking = player.isShiftKeyDown();
         SwissKnifeMode mode = getEffectiveMode(knife, state);
-        ItemStack tool = getSlotStack(knife, mode);
+
+        // 锁定扳手模式：右键全部由扳手接管（普通=旋转，潜行=拆除），禁用其他工具
+        if (mode == SwissKnifeMode.WRENCH)
+        {
+            if (sneaking)
+            {
+                // 拆除不生效时返回 FAIL，避免原版回退到对空气右键（打开 GUI）
+                InteractionResult dismantle = wrenchDismantle(context);
+                return dismantle.consumesAction() ? dismantle : InteractionResult.FAIL;
+            }
+            return wrenchRotate(context);
+        }
+
+        // 非锁定模式：潜行右键优先尝试拆除，拆除不生效则托管当前工具
+        if (sneaking)
+        {
+            InteractionResult dismantle = wrenchDismantle(context);
+            if (dismantle.consumesAction())
+            {
+                return dismantle;
+            }
+        }
+
+        ItemStack tool = activeTool(knife, state);
         if (tool.isEmpty())
         {
-            setMode(knife, SwissKnifeMode.NONE);
             return player.isCrouching() ? InteractionResult.FAIL : InteractionResult.PASS;
         }
-        setMode(knife, mode);
-        applyToolEnchantments(knife, mode);
 
         BlockHitResult hit = new BlockHitResult(context.getClickLocation(), context.getClickedFace(), context.getClickedPos(), context.isInside());
         UseOnContext toolContext = new UseOnContext(context.getLevel(), player, context.getHand(), tool, hit);
@@ -122,6 +156,156 @@ public class SwissKnifeItem extends Item
             return InteractionResult.FAIL;
         }
         return result;
+    }
+
+    // 解析当前生效模式并应用 setMode + 附魔继承，返回槽位工具；空则复位 NONE 并返回 EMPTY
+    private static ItemStack activeTool(ItemStack knife, BlockState state)
+    {
+        SwissKnifeMode mode = getEffectiveMode(knife, state);
+        ItemStack tool = getSlotStack(knife, mode);
+        if (tool.isEmpty())
+        {
+            setMode(knife, SwissKnifeMode.NONE);
+            applyToolEnchantments(knife, SwissKnifeMode.NONE);
+            return ItemStack.EMPTY;
+        }
+        setMode(knife, mode);
+        applyToolEnchantments(knife, mode);
+        return tool;
+    }
+
+    // ---------- 扳手：普通右键旋转可旋转方块（复刻 GT 扳手通用逻辑） ----------
+    private static InteractionResult wrenchRotate(UseOnContext context)
+    {
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
+        Player player = context.getPlayer();
+        if (player == null || player.isShiftKeyDown())
+        {
+            return InteractionResult.PASS;
+        }
+        BlockState state = level.getBlockState(pos);
+        // 轨道不旋转（留给撬棍）
+        if (state.getBlock() instanceof BaseRailBlock)
+        {
+            return InteractionResult.FAIL;
+        }
+        // 围绕点击面法线旋转（Create 扳手风格）：朝向绕点击面轴向顺时针旋转 90°
+        Direction side = context.getClickedFace();
+        BlockState rotated = null;
+        if (state.hasProperty(BlockStateProperties.FACING))
+        {
+            Direction f = state.getValue(BlockStateProperties.FACING);
+            Direction nf = f.getClockWise(side.getAxis());
+            if (nf != f)
+            {
+                rotated = state.setValue(BlockStateProperties.FACING, nf);
+            }
+        }
+        else if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING))
+        {
+            Direction f = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+            Direction nf = f.getClockWise(side.getAxis());
+            if (nf != f)
+            {
+                rotated = state.setValue(BlockStateProperties.HORIZONTAL_FACING, nf);
+            }
+        }
+        else if (state.hasProperty(BlockStateProperties.AXIS))
+        {
+            Direction.Axis a = state.getValue(BlockStateProperties.AXIS);
+            Direction.Axis na = side.getAxis();
+            if (na != a)
+            {
+                rotated = state.setValue(BlockStateProperties.AXIS, na);
+            }
+        }
+        if (rotated != null && rotated != state)
+        {
+            level.setBlock(pos, rotated, 3);
+            level.playSound(null, pos, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
+            return InteractionResult.SUCCESS;
+        }
+        return InteractionResult.PASS;
+    }
+
+    // ---------- 扳手：潜行右键拆除（等效普通破坏掉落，掉落物吸入物品栏，背包满掉落；掉落物堆数超阈值拦截） ----------
+    private static InteractionResult wrenchDismantle(UseOnContext context)
+    {
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
+        Player player = context.getPlayer();
+        if (player == null || !(level instanceof ServerLevel serverLevel))
+        {
+            return InteractionResult.PASS;
+        }
+        BlockState state = level.getBlockState(pos);
+        if (!isDismantleable(level, pos, state))
+        {
+            return InteractionResult.PASS;
+        }
+        List<ItemStack> drops = Block.getDrops(state, serverLevel, pos,
+                level.getBlockEntity(pos), player, player.getMainHandItem());
+        // 掉落物保护：统计掉落堆数（含容器内容物非空槽数），超阈值拦截
+        int dropCount = drops.size() + countContainerContents(level.getBlockEntity(pos));
+        if (Config.dismantleDropThreshold > 0 && dropCount >= Config.dismantleDropThreshold)
+        {
+            level.playSound(null, pos, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
+            player.sendSystemMessage(Component.translatable("message.generaltools.swiss_knife.dismantle_blocked"));
+            return InteractionResult.FAIL;
+        }
+        level.removeBlock(pos, false);
+        for (ItemStack drop : drops)
+        {
+            if (!player.getInventory().add(drop))
+            {
+                Block.popResource(level, pos, drop);
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    // 容器内容物非空槽数（ITEM_HANDLER capability）
+    private static int countContainerContents(BlockEntity be)
+    {
+        if (be == null)
+        {
+            return 0;
+        }
+        LazyOptional<IItemHandler> opt = be.getCapability(ForgeCapabilities.ITEM_HANDLER, null);
+        if (!opt.isPresent())
+        {
+            return 0;
+        }
+        IItemHandler handler = opt.orElse(null);
+        if (handler == null)
+        {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; i < handler.getSlots(); i++)
+        {
+            if (!handler.getStackInSlot(i).isEmpty())
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    // 可拆除判定：带方块实体（视为机器）或红石元件
+    private static boolean isDismantleable(Level level, BlockPos pos, BlockState state)
+    {
+        Block block = state.getBlock();
+        if (level.getBlockEntity(pos) != null)
+        {
+            return true;
+        }
+        // 红石元件：通用信号源（红石块/火把/中继器/比较器/红石线/按钮/压力板/拉杆等）+ 轨道 + 接受端（红石灯/活塞）
+        return state.isSignalSource()
+                || state.is(BlockTags.RAILS)
+                || block instanceof RedstoneLampBlock
+                || block instanceof PistonBaseBlock;
     }
 
     // 临时把玩家主手替换为槽位工具执行 action，恢复主手并写回工具状态（耐久/充能正常消耗）
@@ -258,31 +442,17 @@ public class SwissKnifeItem extends Item
     @Override
     public float getDestroySpeed(ItemStack stack, BlockState state)
     {
-        SwissKnifeMode mode = getEffectiveMode(stack, state);
-        ItemStack tool = getSlotStack(stack, mode);
-        if (!tool.isEmpty())
-        {
-            setMode(stack, mode);
-            applyToolEnchantments(stack, mode);
-            return tool.getDestroySpeed(state);
-        }
-        setMode(stack, SwissKnifeMode.NONE);
-        applyToolEnchantments(stack, SwissKnifeMode.NONE);
-        return 1.0F;
+        ItemStack tool = activeTool(stack, state);
+        return tool.isEmpty() ? 1.0F : tool.getDestroySpeed(state);
     }
 
     // 挖掘完成时触发：委托当前模式槽位工具（范围挖掘、耐久消耗等效果）
     @Override
     public boolean mineBlock(ItemStack stack, Level level, BlockState state, BlockPos pos, LivingEntity miner)
     {
-        SwissKnifeMode mode = getEffectiveMode(stack, state);
-        ItemStack tool = getSlotStack(stack, mode);
-        if (!tool.isEmpty())
-        {
-            applyToolEnchantments(stack, mode);
-            return tool.getItem().mineBlock(tool, level, state, pos, miner);
-        }
-        return super.mineBlock(stack, level, state, pos, miner);
+        ItemStack tool = activeTool(stack, state);
+        return tool.isEmpty() ? super.mineBlock(stack, level, state, pos, miner)
+                : tool.getItem().mineBlock(tool, level, state, pos, miner);
     }
 
     @Override
@@ -365,7 +535,7 @@ public class SwissKnifeItem extends Item
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag)
     {
-        // 标题行：//////当前已装备\\\\\\  （斜线只加粗，文字加粗+青色）
+        // 标题行：///当前已装备\\\  （斜线只加粗，文字加粗+青色）
         Component title = Component.literal(TITLE_SLASH).withStyle(ChatFormatting.BOLD)
                 .append(Component.translatable("tooltip.generaltools.swiss_knife.title_text").withStyle(ChatFormatting.BOLD, ChatFormatting.AQUA))
                 .append(Component.literal(TITLE_BSLASH).withStyle(ChatFormatting.BOLD));
@@ -515,9 +685,10 @@ public class SwissKnifeItem extends Item
         }
         if (list.isEmpty())
         {
-            if (knife.getOrCreateTag().contains("Enchantments"))
+            CompoundTag tag = knife.getOrCreateTag();
+            if (tag.contains("Enchantments"))
             {
-                knife.getOrCreateTag().remove("Enchantments");
+                tag.remove("Enchantments");
             }
         }
         else
