@@ -29,12 +29,14 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.common.ToolAction;
 
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -172,6 +174,52 @@ public class SwissKnifeItem extends Item
             scissors.hurtAndBreak(1, player, (p) -> p.broadcastBreakEvent(event.getHand()));
             return InteractionResult.SUCCESS;
         }, knife, SwissKnifeMode.SCISSORS);
+    }
+
+    // ---------- 经验修补：玩家获得经验时，用经验修复瑞士刀槽位内带 Mending 且耐久不满的工具（原版只查手持物品自身 NBT，不进入瑞士刀内部） ----------
+    @SubscribeEvent
+    public static void onXpChange(PlayerXpEvent.XpChange event)
+    {
+        int amount = event.getAmount();
+        if (amount <= 0)
+        {
+            return;
+        }
+        Player player = event.getEntity();
+        ItemStack knife = player.getMainHandItem();
+        if (!(knife.getItem() instanceof SwissKnifeItem))
+        {
+            return;
+        }
+        for (SwissKnifeMode mode : SwissKnifeMode.values())
+        {
+            if (mode == SwissKnifeMode.NONE)
+            {
+                continue;
+            }
+            ItemStack tool = getSlotStack(knife, mode);
+            if (tool.isEmpty() || !tool.isDamaged())
+            {
+                continue;
+            }
+            if (EnchantmentHelper.getItemEnchantmentLevel(Enchantments.MENDING, tool) <= 0)
+            {
+                continue;
+            }
+            int repair = Math.min((int) (amount * tool.getXpRepairRatio()), tool.getDamageValue());
+            if (repair <= 0)
+            {
+                continue;
+            }
+            tool.setDamageValue(tool.getDamageValue() - repair);
+            setSlotStack(knife, mode, tool);
+            amount -= repair / 2;
+            if (amount <= 0)
+            {
+                break;
+            }
+        }
+        event.setAmount(Math.max(0, amount));
     }
 
     // ---------- 声明瑞士刀能执行的工具动作：按动作名归类工具类型，按槽位判定（与当前切换状态无关） ----------
