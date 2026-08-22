@@ -136,7 +136,8 @@ public class SwissKnifeItem extends Item
         ItemStack tool = getSlotStack(knife, mode);
         if (tool.isEmpty())
         {
-            setMode(knife, SwissKnifeMode.NONE);
+            // 扳手模式无槽位工具：保持扳手贴图；其余模式空工具复位 NONE
+            setMode(knife, mode == SwissKnifeMode.WRENCH ? SwissKnifeMode.WRENCH : SwissKnifeMode.NONE);
             applyToolEnchantments(knife, SwissKnifeMode.NONE);
             return ItemStack.EMPTY;
         }
