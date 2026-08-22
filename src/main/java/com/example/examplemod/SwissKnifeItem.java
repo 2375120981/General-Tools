@@ -6,14 +6,11 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -35,18 +32,9 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseRailBlock;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.RedstoneLampBlock;
-import net.minecraft.world.level.block.piston.PistonBaseBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.common.ToolAction;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
 
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
@@ -103,7 +91,7 @@ public class SwissKnifeItem extends Item
         return super.use(level, player, hand);
     }
 
-    // ---------- 对方块右键：扳手（旋转/拆除）或临时伪装成槽位工具执行其 useOn（完整继承功能/附魔/充能） ----------
+    // ---------- 对方块右键：扳手模式完全交给 AE2 等 mod 的 wrench 机制，其余模式临时伪装成槽位工具执行其 useOn（完整继承功能/附魔/充能） ----------
     @Override
     public InteractionResult useOn(UseOnContext context)
     {
@@ -115,29 +103,12 @@ public class SwissKnifeItem extends Item
         BlockState state = context.getLevel().getBlockState(context.getClickedPos());
         ItemStack knife = context.getItemInHand();
 
-        boolean sneaking = player.isShiftKeyDown();
         SwissKnifeMode mode = getEffectiveMode(knife, state);
 
-        // 锁定扳手模式：右键全部由扳手接管（普通=旋转，潜行=拆除），禁用其他工具
+        // 扳手模式：复刻 AE2 石英扳手，旋转/拆除由 AE2 WrenchHook 等通过 wrench tag 接管；非 AE2 方块返回 FAIL（无效果）
         if (mode == SwissKnifeMode.WRENCH)
         {
-            if (sneaking)
-            {
-                // 拆除不生效时返回 FAIL，避免原版回退到对空气右键（打开 GUI）
-                InteractionResult dismantle = wrenchDismantle(context);
-                return dismantle.consumesAction() ? dismantle : InteractionResult.FAIL;
-            }
-            return wrenchRotate(context);
-        }
-
-        // 非锁定模式：潜行右键优先尝试拆除，拆除不生效则托管当前工具
-        if (sneaking)
-        {
-            InteractionResult dismantle = wrenchDismantle(context);
-            if (dismantle.consumesAction())
-            {
-                return dismantle;
-            }
+            return InteractionResult.FAIL;
         }
 
         ItemStack tool = activeTool(knife, state);
@@ -172,140 +143,6 @@ public class SwissKnifeItem extends Item
         setMode(knife, mode);
         applyToolEnchantments(knife, mode);
         return tool;
-    }
-
-    // ---------- 扳手：普通右键旋转可旋转方块（复刻 GT 扳手通用逻辑） ----------
-    private static InteractionResult wrenchRotate(UseOnContext context)
-    {
-        Level level = context.getLevel();
-        BlockPos pos = context.getClickedPos();
-        Player player = context.getPlayer();
-        if (player == null || player.isShiftKeyDown())
-        {
-            return InteractionResult.PASS;
-        }
-        BlockState state = level.getBlockState(pos);
-        // 轨道不旋转（留给撬棍）
-        if (state.getBlock() instanceof BaseRailBlock)
-        {
-            return InteractionResult.FAIL;
-        }
-        // 围绕点击面法线旋转（Create 扳手风格）：朝向绕点击面轴向顺时针旋转 90°
-        Direction side = context.getClickedFace();
-        BlockState rotated = null;
-        if (state.hasProperty(BlockStateProperties.FACING))
-        {
-            Direction f = state.getValue(BlockStateProperties.FACING);
-            Direction nf = f.getClockWise(side.getAxis());
-            if (nf != f)
-            {
-                rotated = state.setValue(BlockStateProperties.FACING, nf);
-            }
-        }
-        else if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING))
-        {
-            Direction f = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
-            Direction nf = f.getClockWise(side.getAxis());
-            if (nf != f)
-            {
-                rotated = state.setValue(BlockStateProperties.HORIZONTAL_FACING, nf);
-            }
-        }
-        else if (state.hasProperty(BlockStateProperties.AXIS))
-        {
-            Direction.Axis a = state.getValue(BlockStateProperties.AXIS);
-            Direction.Axis na = side.getAxis();
-            if (na != a)
-            {
-                rotated = state.setValue(BlockStateProperties.AXIS, na);
-            }
-        }
-        if (rotated != null && rotated != state)
-        {
-            level.setBlock(pos, rotated, 3);
-            level.playSound(null, pos, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
-            return InteractionResult.SUCCESS;
-        }
-        return InteractionResult.PASS;
-    }
-
-    // ---------- 扳手：潜行右键拆除（等效普通破坏掉落，掉落物吸入物品栏，背包满掉落；掉落物堆数超阈值拦截） ----------
-    private static InteractionResult wrenchDismantle(UseOnContext context)
-    {
-        Level level = context.getLevel();
-        BlockPos pos = context.getClickedPos();
-        Player player = context.getPlayer();
-        if (player == null || !(level instanceof ServerLevel serverLevel))
-        {
-            return InteractionResult.PASS;
-        }
-        BlockState state = level.getBlockState(pos);
-        if (!isDismantleable(level, pos, state))
-        {
-            return InteractionResult.PASS;
-        }
-        List<ItemStack> drops = Block.getDrops(state, serverLevel, pos,
-                level.getBlockEntity(pos), player, player.getMainHandItem());
-        // 掉落物保护：统计掉落堆数（含容器内容物非空槽数），超阈值拦截
-        int dropCount = drops.size() + countContainerContents(level.getBlockEntity(pos));
-        if (Config.dismantleDropThreshold > 0 && dropCount >= Config.dismantleDropThreshold)
-        {
-            level.playSound(null, pos, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
-            player.sendSystemMessage(Component.translatable("message.generaltools.swiss_knife.dismantle_blocked"));
-            return InteractionResult.FAIL;
-        }
-        level.removeBlock(pos, false);
-        for (ItemStack drop : drops)
-        {
-            if (!player.getInventory().add(drop))
-            {
-                Block.popResource(level, pos, drop);
-            }
-        }
-        return InteractionResult.SUCCESS;
-    }
-
-    // 容器内容物非空槽数（ITEM_HANDLER capability）
-    private static int countContainerContents(BlockEntity be)
-    {
-        if (be == null)
-        {
-            return 0;
-        }
-        LazyOptional<IItemHandler> opt = be.getCapability(ForgeCapabilities.ITEM_HANDLER, null);
-        if (!opt.isPresent())
-        {
-            return 0;
-        }
-        IItemHandler handler = opt.orElse(null);
-        if (handler == null)
-        {
-            return 0;
-        }
-        int count = 0;
-        for (int i = 0; i < handler.getSlots(); i++)
-        {
-            if (!handler.getStackInSlot(i).isEmpty())
-            {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    // 可拆除判定：带方块实体（视为机器）或红石元件
-    private static boolean isDismantleable(Level level, BlockPos pos, BlockState state)
-    {
-        Block block = state.getBlock();
-        if (level.getBlockEntity(pos) != null)
-        {
-            return true;
-        }
-        // 红石元件：通用信号源（红石块/火把/中继器/比较器/红石线/按钮/压力板/拉杆等）+ 轨道 + 接受端（红石灯/活塞）
-        return state.isSignalSource()
-                || state.is(BlockTags.RAILS)
-                || block instanceof RedstoneLampBlock
-                || block instanceof PistonBaseBlock;
     }
 
     // 临时把玩家主手替换为槽位工具执行 action，恢复主手并写回工具状态（耐久/充能正常消耗）

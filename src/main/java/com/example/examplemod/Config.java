@@ -51,17 +51,6 @@ public class Config
             )
             .defineListAllowEmpty("blacklistedTags", List.of(), Config::validateTagName);
 
-    // 拆除保护：实际掉落物堆数 >= 此值时拦截拆除并提示
-    private static final ForgeConfigSpec.IntValue DISMANTLE_DROP_THRESHOLD = BUILDER
-            .comment(
-                    "=================== 拆除保护 ===================",
-                    "扳手拆除方块时，若实际掉落物堆数（含容器内容物）>= 此值则拦截拆除并提示。",
-                    "示例：dismantleDropThreshold = 5",
-                    "设 0 可关闭此保护。",
-                    ""
-            )
-            .defineInRange("dismantleDropThreshold", 5, 0, Integer.MAX_VALUE);
-
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static final TagKey<Item> BLACKLIST_TAG = TagKey.create(Registries.ITEM,
@@ -69,7 +58,6 @@ public class Config
 
     public static Set<Item> blacklistedTools = Collections.emptySet();
     public static Set<TagKey<Item>> blacklistedTags = Collections.emptySet();
-    public static int dismantleDropThreshold;
 
     private static boolean validateItemName(final Object obj)
     {
@@ -127,6 +115,5 @@ public class Config
         blacklistedTags = BLACKLISTED_TAGS.get().stream()
                 .map(tagName -> TagKey.create(Registries.ITEM, ResourceLocation.tryParse(tagName)))
                 .collect(Collectors.toSet());
-        dismantleDropThreshold = DISMANTLE_DROP_THRESHOLD.get();
     }
 }

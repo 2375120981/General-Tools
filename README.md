@@ -12,12 +12,10 @@
   - 附魔自动继承（效率、时运、精准采集、锋利等由原版机制生效）
   - 攻击时继承剑槽伤害并消耗对应工具耐久（剩余耐久 ≤ 1 自动禁用功能保护工具不损坏）
 - **GUI**：SophisticatedBackpacks 风格界面，模式按钮图集，槽位背景图标
-- **扳手模式（内置通用扳手，无需放入工具）**：
-  - 锁定扳手模式：普通右键**旋转**方块（围绕点击面法线，类似机械动力扳手，可旋转各模组机器）；潜行右键**拆除**
-  - 非锁定模式下：潜行右键也可触发拆除，拆除不生效则回退当前工具功能
-  - 拆除掉落物吸入物品栏（背包满则掉落）
-- **掉落物保护**（`config/generaltools_blacklist.toml` 可配置）：拆除时实际掉落物堆数（含容器内容物）≥ 阈值则拦截并提示「内容物过多，无法拆除」
-- **Pipez 兼容**：瑞士刀自带 `forge:wrenches` / `forge:tools/wrench` 标签，可被 Pipez 等模组识别为扳手，潜行右键可操作管道（断开/提取切换）
+- **扳手模式（通用扳手兼容，无需放入工具）**：
+  - 瑞士刀自带 `forge:tools/wrench` / `forge:wrenches` / `c:tools/wrench` / `c:wrenches` 通用扳手标签，**扳手能力常态生效**，可被 AE2、机械动力（Create）、格雷科技（GTCEu）、通用机械（Mekanism）、Pipez 等模组识别为扳手，跨模组执行通用扳手操作（旋转、拆除、管道操作等）
+  - **锁定扳手模式**：右键**只生效扳手**，屏蔽其他工具操作
+  - **其他模式**：扳手与其他工具**共同生效**——AE2 等模组方块由对应 wrench 机制接管，普通方块仍使用当前工具功能
 - **自定义 tooltip**：已装备工具列表 + 当前模式
 - **黑名单系统**（`config/generaltools_blacklist.toml`）：
   - 按物品 ID 禁用：`blacklistedTools`
@@ -37,21 +35,20 @@
 .\gradlew.bat build
 ```
 
-构建产物：`build/libs/generaltoolsV1.3_1.20.1Forge.jar`，放入 `mods` 目录即可。
+构建产物：`build/libs/generaltoolsV1.4_1.20.1Forge.jar`，放入 `mods` 目录即可。
 
 ## 配置
 
 首次运行后在 `config` 目录生成 `generaltools_blacklist.toml`，可配置：
 - 黑名单：`blacklistedTools`（物品 ID）、`blacklistedTags`（物品标签）
-- 拆除保护：`dismantleDropThreshold`（拆除时掉落物堆数阈值，默认 5，设 0 关闭）
 
 ## 项目结构
 
 ```
 src/main/java/com/example/examplemod/
 ├── ExampleMod.java       主类（注册、创造标签、网络通道、GUI 注册）
-├── Config.java           配置（黑名单 ID / Tag / 内置标签 / 拆除保护阈值）
-├── SwissKnifeItem.java   瑞士刀物品（模式、工具委托、扳手旋转/拆除、附魔、tooltip）
+├── Config.java           配置（黑名单 ID / Tag / 内置标签）
+├── SwissKnifeItem.java   瑞士刀物品（模式、工具委托、通用扳手兼容、附魔、tooltip）
 ├── SwissKnifeMenu.java   容器菜单（7 工具槽 + 黑名单判定）
 ├── SwissKnifeScreen.java 客户端 GUI
 ├── ModeSetPacket.java    模式切换网络包

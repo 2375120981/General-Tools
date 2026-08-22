@@ -13,6 +13,5 @@
   "tooltip.generaltools.swiss_knife.flint_and_steel": "Flint and Steel",
   "tooltip.generaltools.swiss_knife.wrench": "Wrench",
   "tooltip.generaltools.swiss_knife.mode": "Mode: %s",
-  "tooltip.generaltools.swiss_knife.auto": "Auto",
-  "message.generaltools.swiss_knife.dismantle_blocked": "Too many contents, cannot dismantle"
+  "tooltip.generaltools.swiss_knife.auto": "Auto"
 }

@@ -13,6 +13,5 @@
   "tooltip.generaltools.swiss_knife.flint_and_steel": "打火石",
   "tooltip.generaltools.swiss_knife.wrench": "扳手",
   "tooltip.generaltools.swiss_knife.mode": "模式：%s",
-  "tooltip.generaltools.swiss_knife.auto": "自动",
-  "message.generaltools.swiss_knife.dismantle_blocked": "内容物过多，无法拆除"
+  "tooltip.generaltools.swiss_knife.auto": "自动"
 }
