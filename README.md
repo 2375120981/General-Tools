@@ -35,7 +35,7 @@
 .\gradlew.bat build
 ```
 
-构建产物：`build/libs/generaltoolsV1.4_1.20.1Forge.jar`，放入 `mods` 目录即可。
+构建产物：`build/libs/generaltoolsV1.5_1.20.1Forge.jar`，放入 `mods` 目录即可。
 
 ## 配置
 

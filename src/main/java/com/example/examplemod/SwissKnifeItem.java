@@ -1,6 +1,5 @@
 package com.example.examplemod;
 
-import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -15,17 +14,14 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -36,6 +32,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.common.ToolAction;
 
+import net.minecraftforge.event.ItemAttributeModifierEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -66,11 +64,6 @@ public class SwissKnifeItem extends Item
             this.id = id;
         }
     }
-
-    private static final ImmutableMultimap<Attribute, AttributeModifier> KNIFE_ATTRIBUTES = ImmutableMultimap.<Attribute, AttributeModifier>builder()
-            .put(Attributes.ATTACK_DAMAGE, new AttributeModifier(Item.BASE_ATTACK_DAMAGE_UUID, "Swiss knife damage", 0.0, AttributeModifier.Operation.ADDITION))
-            .put(Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_UUID, "Swiss knife speed", -2.4, AttributeModifier.Operation.ADDITION))
-            .build();
 
     public SwissKnifeItem()
     {
@@ -120,7 +113,8 @@ public class SwissKnifeItem extends Item
         BlockHitResult hit = new BlockHitResult(context.getClickLocation(), context.getClickedFace(), context.getClickedPos(), context.isInside());
         UseOnContext toolContext = new UseOnContext(context.getLevel(), player, context.getHand(), tool, hit);
 
-        InteractionResult result = withToolInHand(player, tool, () -> tool.getItem().useOn(toolContext), knife, mode);
+        InteractionResult result = withToolInHand(player, context.getHand(), tool,
+                () -> tool.getItem().useOn(toolContext), knife, mode);
 
         if (result == InteractionResult.PASS && player.isCrouching())
         {
@@ -147,20 +141,44 @@ public class SwissKnifeItem extends Item
     }
 
     // 临时把玩家主手替换为槽位工具执行 action，恢复主手并写回工具状态（耐久/充能正常消耗）
-    private static InteractionResult withToolInHand(Player player, ItemStack tool, Supplier<InteractionResult> action, ItemStack knife, SwissKnifeMode mode)
+    private static InteractionResult withToolInHand(Player player, InteractionHand hand, ItemStack tool,
+                                                     Supplier<InteractionResult> action, ItemStack knife,
+                                                     SwissKnifeMode mode)
     {
-        int selected = player.getInventory().selected;
-        ItemStack original = player.getInventory().getItem(selected);
-        player.getInventory().setItem(selected, tool);
+        ItemStack original = player.getItemInHand(hand);
+        ItemStack backup = tool.copy();
+        player.setItemInHand(hand, tool);
         try
         {
             return action.get();
         }
         finally
         {
-            player.getInventory().setItem(selected, original);
-            setSlotStack(knife, mode, tool);
+            ItemStack resultingTool = protectDurability(backup, player.getItemInHand(hand));
+            player.setItemInHand(hand, original);
+            setSlotStack(knife, mode, resultingTool);
         }
+    }
+
+    /** 标准耐久工具若在一次代理操作中损坏，则恢复为剩余 1 点耐久。 */
+    private static ItemStack protectDurability(ItemStack before, ItemStack after)
+    {
+        if (before.isEmpty() || !before.isDamageableItem() || before.getMaxDamage() <= 1)
+        {
+            return after;
+        }
+        int protectedDamage = before.getMaxDamage() - 1;
+        if (after.isEmpty())
+        {
+            ItemStack restored = before.copy();
+            restored.setDamageValue(protectedDamage);
+            return restored;
+        }
+        if (after.getItem() == before.getItem() && after.getDamageValue() >= protectedDamage)
+        {
+            after.setDamageValue(protectedDamage);
+        }
+        return after;
     }
 
     // ---------- 剪羊毛：剪刀模式右键未剪毛的羊时，临时伪装成剪刀并直接调用原版剪毛逻辑 ----------
@@ -181,7 +199,7 @@ public class SwissKnifeItem extends Item
         {
             return;
         }
-        if (!(event.getTarget() instanceof Sheep sheep) || sheep.isSheared())
+        if (!(event.getTarget() instanceof LivingEntity target))
         {
             return;
         }
@@ -190,12 +208,28 @@ public class SwissKnifeItem extends Item
         {
             return;
         }
-        event.setCanceled(true);
-        withToolInHand(player, scissors, () -> {
-            sheep.shear(SoundSource.PLAYERS);
-            scissors.hurtAndBreak(1, player, (p) -> p.broadcastBreakEvent(event.getHand()));
-            return InteractionResult.SUCCESS;
+        InteractionResult result = withToolInHand(player, event.getHand(), scissors, () -> {
+            InteractionResult delegated = scissors.interactLivingEntity(player, target, event.getHand());
+            if (delegated.consumesAction())
+            {
+                return delegated;
+            }
+            if (target instanceof Sheep sheep && !sheep.isSheared())
+            {
+                sheep.shear(SoundSource.PLAYERS);
+                if (!player.getAbilities().instabuild)
+                {
+                    scissors.hurtAndBreak(1, player, (p) -> p.broadcastBreakEvent(event.getHand()));
+                }
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.PASS;
         }, knife, SwissKnifeMode.SCISSORS);
+        if (result.consumesAction())
+        {
+            event.setCanceled(true);
+            event.setCancellationResult(result);
+        }
     }
 
     // ---------- 经验修补：玩家获得经验时，用经验修复瑞士刀槽位内带 Mending 且耐久不满的工具（原版只查手持物品自身 NBT，不进入瑞士刀内部） ----------
@@ -219,7 +253,7 @@ public class SwissKnifeItem extends Item
             {
                 continue;
             }
-            ItemStack tool = getSlotStack(knife, mode);
+            ItemStack tool = getStoredSlotStack(knife, mode);
             if (tool.isEmpty() || !tool.isDamaged())
             {
                 continue;
@@ -228,20 +262,62 @@ public class SwissKnifeItem extends Item
             {
                 continue;
             }
-            int repair = Math.min((int) (amount * tool.getXpRepairRatio()), tool.getDamageValue());
+            float repairRatio = tool.getXpRepairRatio();
+            if (repairRatio <= 0.0F)
+            {
+                continue;
+            }
+            int repair = Math.min((int) (amount * repairRatio), tool.getDamageValue());
             if (repair <= 0)
             {
                 continue;
             }
             tool.setDamageValue(tool.getDamageValue() - repair);
             setSlotStack(knife, mode, tool);
-            amount -= repair / 2;
+            int xpUsed = Math.min(amount, Math.max(1, (int) Math.ceil(repair / repairRatio)));
+            amount -= xpUsed;
             if (amount <= 0)
             {
                 break;
             }
         }
         event.setAmount(Math.max(0, amount));
+    }
+
+    /** 在原版计算本次攻击前同步剑槽内的附魔，避免在属性查询过程中修改物品 NBT。 */
+    @SubscribeEvent
+    public static void onAttackEntity(AttackEntityEvent event)
+    {
+        ItemStack knife = event.getEntity().getMainHandItem();
+        if (!(knife.getItem() instanceof SwissKnifeItem))
+        {
+            return;
+        }
+        ItemStack sword = getSlotStack(knife, SwissKnifeMode.SWORD);
+        setMode(knife, sword.isEmpty() ? SwissKnifeMode.NONE : SwissKnifeMode.SWORD);
+        applyToolEnchantments(knife, SwissKnifeMode.SWORD);
+    }
+
+    /** 直接采用内部剑经过 Forge 事件修正后的有效属性，兼容模组剑的攻速与额外属性。 */
+    @SubscribeEvent
+    public static void onItemAttributeModifiers(ItemAttributeModifierEvent event)
+    {
+        ItemStack knife = event.getItemStack();
+        if (!(knife.getItem() instanceof SwissKnifeItem))
+        {
+            return;
+        }
+        event.clearModifiers();
+        ItemStack sword = getSlotStack(knife, SwissKnifeMode.SWORD);
+        if (sword.isEmpty())
+        {
+            return;
+        }
+        Multimap<Attribute, AttributeModifier> swordModifiers = sword.getAttributeModifiers(event.getSlotType());
+        for (Map.Entry<Attribute, AttributeModifier> entry : swordModifiers.entries())
+        {
+            event.addModifier(entry.getKey(), entry.getValue());
+        }
     }
 
     // ---------- 声明瑞士刀能执行的工具动作：按动作名归类工具类型，按槽位判定（与当前切换状态无关） ----------
@@ -288,9 +364,16 @@ public class SwissKnifeItem extends Item
     @Override
     public boolean mineBlock(ItemStack stack, Level level, BlockState state, BlockPos pos, LivingEntity miner)
     {
+        SwissKnifeMode mode = getEffectiveMode(stack, state);
         ItemStack tool = activeTool(stack, state);
-        return tool.isEmpty() ? super.mineBlock(stack, level, state, pos, miner)
-                : tool.getItem().mineBlock(tool, level, state, pos, miner);
+        if (tool.isEmpty())
+        {
+            return super.mineBlock(stack, level, state, pos, miner);
+        }
+        ItemStack backup = tool.copy();
+        boolean result = tool.getItem().mineBlock(tool, level, state, pos, miner);
+        setSlotStack(stack, mode, protectDurability(backup, tool));
+        return result;
     }
 
     @Override
@@ -305,65 +388,20 @@ public class SwissKnifeItem extends Item
         return false;
     }
 
-    // ---------- 攻击：无剑为空手伤害，有剑时继承剑伤害（锋利/火焰附加等附魔由合并到瑞士刀的附魔自动生效） ----------
+    // ---------- 攻击：伤害/攻速由动态属性事件继承；此处委托内部剑命中回调并写回耐久及自定义状态 ----------
     @Override
     public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker)
     {
         setMode(stack, SwissKnifeMode.SWORD);
-        if (!(attacker instanceof Player player))
-        {
-            return true;
-        }
         ItemStack sword = getSlotStack(stack, SwissKnifeMode.SWORD);
         if (sword.isEmpty())
         {
             return true;
         }
-        float extra = 0.0F;
-        if (sword.getItem() instanceof SwordItem swordItem)
-        {
-            extra = swordItem.getDamage();
-        }
-        if (extra > 0.0F)
-        {
-            target.hurt(player.damageSources().playerAttack(player), extra);
-        }
-        // 扣剑槽工具耐久并写回（与挖掘等工具消耗一致；创造模式不扣；剩余 1 由保护机制禁用）
-        if (!player.getAbilities().instabuild)
-        {
-            sword.hurtAndBreak(1, attacker, (p) -> p.broadcastBreakEvent(EquipmentSlot.MAINHAND));
-            setSlotStack(stack, SwissKnifeMode.SWORD, sword);
-        }
-        return true;
-    }
-
-    @Override
-    public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(EquipmentSlot slot)
-    {
-        if (slot == EquipmentSlot.MAINHAND)
-        {
-            return KNIFE_ATTRIBUTES;
-        }
-        return super.getDefaultAttributeModifiers(slot);
-    }
-
-    // 动态属性：装了剑后，工具提示与实际属性显示剑的伤害（与实际攻击保持一致）；攻击时合并剑附魔
-    @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack)
-    {
-        if (slot == EquipmentSlot.MAINHAND)
-        {
-            applyToolEnchantments(stack, SwissKnifeMode.SWORD);
-            ItemStack sword = getSlotStack(stack, SwissKnifeMode.SWORD);
-            if (!sword.isEmpty() && sword.getItem() instanceof SwordItem swordItem)
-            {
-                return ImmutableMultimap.<Attribute, AttributeModifier>builder()
-                        .put(Attributes.ATTACK_DAMAGE, new AttributeModifier(Item.BASE_ATTACK_DAMAGE_UUID, "Swiss knife damage", swordItem.getDamage(), AttributeModifier.Operation.ADDITION))
-                        .put(Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_UUID, "Swiss knife speed", -2.4, AttributeModifier.Operation.ADDITION))
-                        .build();
-            }
-        }
-        return super.getAttributeModifiers(slot, stack);
+        ItemStack backup = sword.copy();
+        boolean result = sword.getItem().hurtEnemy(sword, target, attacker);
+        setSlotStack(stack, SwissKnifeMode.SWORD, protectDurability(backup, sword));
+        return result;
     }
 
     private static final String TITLE_SLASH = "///";
@@ -462,11 +500,7 @@ public class SwissKnifeItem extends Item
 
     public static ItemStack getSlotStack(ItemStack knife, SwissKnifeMode mode)
     {
-        if (knife.isEmpty() || mode == SwissKnifeMode.NONE)
-        {
-            return ItemStack.EMPTY;
-        }
-        ItemStack tool = ItemStack.of(getSwissData(knife).getCompound("slot_" + mode.ordinal()));
+        ItemStack tool = getStoredSlotStack(knife, mode);
         if (tool.isEmpty())
         {
             return ItemStack.EMPTY;
@@ -477,6 +511,16 @@ public class SwissKnifeItem extends Item
             return ItemStack.EMPTY;
         }
         return tool;
+    }
+
+    /** 读取真实槽位内容，不应用剩余 1 点耐久时的功能禁用保护。 */
+    public static ItemStack getStoredSlotStack(ItemStack knife, SwissKnifeMode mode)
+    {
+        if (knife.isEmpty() || mode == SwissKnifeMode.NONE || mode == SwissKnifeMode.WRENCH)
+        {
+            return ItemStack.EMPTY;
+        }
+        return ItemStack.of(getSwissData(knife).getCompound("slot_" + mode.ordinal()));
     }
 
     public static void setSlotStack(ItemStack knife, SwissKnifeMode mode, ItemStack tool)
@@ -515,6 +559,11 @@ public class SwissKnifeItem extends Item
         {
             for (Map.Entry<Enchantment, Integer> entry : EnchantmentHelper.getEnchantments(tool).entrySet())
             {
+                // 经验修补直接作用于槽内真实工具，不能复制到无耐久的瑞士刀本体。
+                if (entry.getKey() == Enchantments.MENDING)
+                {
+                    continue;
+                }
                 CompoundTag tag = new CompoundTag();
                 tag.putString("id", EnchantmentHelper.getEnchantmentId(entry.getKey()).toString());
                 tag.putInt("lvl", entry.getValue());
