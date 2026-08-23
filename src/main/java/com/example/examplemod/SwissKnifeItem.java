@@ -89,18 +89,19 @@ public class SwissKnifeItem extends Item {
         BlockHitResult hit = new BlockHitResult(context.getClickLocation(), context.getClickedFace(),
                 context.getClickedPos(), context.isInside());
         UseOnContext toolContext = new UseOnContext(context.getLevel(), player, context.getHand(), tool, hit);
-        InteractionResult result = withToolInHand(player, tool, () -> tool.getItem().useOn(toolContext), knife, mode);
+        InteractionResult result = withToolInHand(player, context.getHand(), tool,
+                () -> tool.getItem().useOn(toolContext), knife, mode);
         return result == InteractionResult.PASS && player.isCrouching() ? InteractionResult.FAIL : result;
     }
 
-    private static InteractionResult withToolInHand(Player player, ItemStack tool, Supplier<InteractionResult> action,
+    private static InteractionResult withToolInHand(Player player, InteractionHand hand, ItemStack tool,
+                                                     Supplier<InteractionResult> action,
                                                      ItemStack knife, SwissKnifeMode mode) {
-        int selected = player.getInventory().selected;
-        ItemStack original = player.getInventory().getItem(selected);
-        player.getInventory().setItem(selected, tool);
+        ItemStack original = player.getItemInHand(hand);
+        player.setItemInHand(hand, tool);
         try { return action.get(); }
         finally {
-            player.getInventory().setItem(selected, original);
+            player.setItemInHand(hand, original);
             setSlotStack(knife, mode, tool);
         }
     }
@@ -115,12 +116,15 @@ public class SwissKnifeItem extends Item {
         ItemStack shears = getSlotStack(knife, SwissKnifeMode.SCISSORS);
         if (shears.isEmpty()) return;
         event.setCanceled(true);
-        sheep.shear(SoundSource.PLAYERS);
-        if (!player.getAbilities().instabuild) {
-            shears.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
-            setSlotStack(knife, SwissKnifeMode.SCISSORS, shears);
-        }
-        event.setCancellationResult(InteractionResult.SUCCESS);
+        InteractionResult result = withToolInHand(player, event.getHand(), shears, () -> {
+            sheep.shear(SoundSource.PLAYERS);
+            if (!player.getAbilities().instabuild) {
+                shears.hurtAndBreak(1, player,
+                        event.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
+            }
+            return InteractionResult.SUCCESS;
+        }, knife, SwissKnifeMode.SCISSORS);
+        event.setCancellationResult(result);
     }
 
     // 经验修补不会复制到瑞士刀本体；玩家获得经验时，单独修复主手瑞士刀内带经验修补的受损工具。

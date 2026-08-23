@@ -53,7 +53,10 @@ public class SwissKnifeMenu extends AbstractContainerMenu
         {
             for (int i = 0; i < KNIFE_SLOTS; i++)
             {
-                container.setItem(i, SwissKnifeItem.getSlotStack(knife, SwissKnifeItem.SwissKnifeMode.values()[i + 1]).copy());
+                // 菜单必须读取真实存储值。getSlotStack 会把剩余 1 点耐久的工具视为
+                // 不可用；若在这里使用它，菜单随后的保存会把受保护工具误删。
+                container.setItem(i, SwissKnifeItem.getStoredSlotStack(
+                        knife, SwissKnifeItem.SwissKnifeMode.values()[i + 1]).copy());
             }
         }
         // 瑞士刀 7 个工具槽（剑/镐/斧/铲/锄/剪刀/打火石）
