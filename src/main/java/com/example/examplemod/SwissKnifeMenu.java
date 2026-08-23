@@ -35,6 +35,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     };
 
     private final ItemStack knifeStack;
+    private final Player owner;
     private final SimpleContainer container = new SimpleContainer(KNIFE_SLOTS);
     public final DataSlot modeData = DataSlot.standalone();
 
@@ -46,6 +47,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     public SwissKnifeMenu(int id, Inventory playerInventory, ItemStack knife, Level level)
     {
         super(ExampleMod.SWISS_KNIFE_MENU.get(), id);
+        this.owner = playerInventory.player;
         this.knifeStack = knife;
         this.modeData.set(SwissKnifeItem.getModeSetting(knife));
         this.addDataSlot(this.modeData);
@@ -84,7 +86,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     @Override
     public boolean stillValid(Player player)
     {
-        return true;
+        return player == this.owner && player.isAlive() && isKnifeStillOwned();
     }
 
     @Override
@@ -162,7 +164,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
 
     private void saveToNbt()
     {
-        if (!knifeStack.isEmpty())
+        if (!knifeStack.isEmpty() && isKnifeStillOwned())
         {
             SwissKnifeItem.setModeSetting(knifeStack, this.modeData.get());
             for (int i = 0; i < KNIFE_SLOTS; i++)
@@ -170,6 +172,17 @@ public class SwissKnifeMenu extends AbstractContainerMenu
                 SwissKnifeItem.setSlotStack(knifeStack, SwissKnifeItem.SwissKnifeMode.values()[i + 1], container.getItem(i));
             }
         }
+    }
+
+    private boolean isKnifeStillOwned()
+    {
+        if (knifeStack.isEmpty()) return false;
+        if (owner.getMainHandItem() == knifeStack || owner.getOffhandItem() == knifeStack) return true;
+        for (ItemStack stack : owner.getInventory().items)
+        {
+            if (stack == knifeStack) return true;
+        }
+        return false;
     }
 
     private static class SwissKnifeSlot extends Slot

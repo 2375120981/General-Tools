@@ -98,12 +98,29 @@ public class SwissKnifeItem extends Item {
                                                      Supplier<InteractionResult> action,
                                                      ItemStack knife, SwissKnifeMode mode) {
         ItemStack original = player.getItemInHand(hand);
+        ItemStack backup = tool.copy();
         player.setItemInHand(hand, tool);
         try { return action.get(); }
         finally {
+            ItemStack resultingTool = protectDurability(backup, player.getItemInHand(hand));
             player.setItemInHand(hand, original);
-            setSlotStack(knife, mode, tool);
+            setSlotStack(knife, mode, resultingTool);
         }
+    }
+
+    /** 标准耐久工具若在一次代理操作中损坏，则恢复为剩余 1 点耐久。 */
+    private static ItemStack protectDurability(ItemStack before, ItemStack after) {
+        if (before.isEmpty() || !before.isDamageableItem() || before.getMaxDamage() <= 1) return after;
+        int protectedDamage = before.getMaxDamage() - 1;
+        if (after.isEmpty()) {
+            ItemStack restored = before.copy();
+            restored.setDamageValue(protectedDamage);
+            return restored;
+        }
+        if (after.getItem() == before.getItem() && after.getDamageValue() >= protectedDamage) {
+            after.setDamageValue(protectedDamage);
+        }
+        return after;
     }
 
     @SubscribeEvent
@@ -112,19 +129,26 @@ public class SwissKnifeItem extends Item {
         ItemStack knife = player.getItemInHand(event.getHand());
         if (player.level().isClientSide || !(knife.getItem() instanceof SwissKnifeItem)
                 || getModeSetting(knife) != SwissKnifeMode.SCISSORS.id
-                || !(event.getTarget() instanceof Sheep sheep) || sheep.isSheared()) return;
+                || !(event.getTarget() instanceof LivingEntity target)) return;
         ItemStack shears = getSlotStack(knife, SwissKnifeMode.SCISSORS);
         if (shears.isEmpty()) return;
-        event.setCanceled(true);
         InteractionResult result = withToolInHand(player, event.getHand(), shears, () -> {
-            sheep.shear(SoundSource.PLAYERS);
-            if (!player.getAbilities().instabuild) {
-                shears.hurtAndBreak(1, player,
-                        event.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
+            InteractionResult delegated = shears.interactLivingEntity(player, target, event.getHand());
+            if (delegated.consumesAction()) return delegated;
+            if (target instanceof Sheep sheep && !sheep.isSheared()) {
+                sheep.shear(SoundSource.PLAYERS);
+                if (!player.getAbilities().instabuild) {
+                    shears.hurtAndBreak(1, player,
+                            event.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
+                }
+                return InteractionResult.SUCCESS;
             }
-            return InteractionResult.SUCCESS;
+            return InteractionResult.PASS;
         }, knife, SwissKnifeMode.SCISSORS);
-        event.setCancellationResult(result);
+        if (result.consumesAction()) {
+            event.setCanceled(true);
+            event.setCancellationResult(result);
+        }
     }
 
     // 经验修补不会复制到瑞士刀本体；玩家获得经验时，单独修复主手瑞士刀内带经验修补的受损工具。
@@ -216,8 +240,9 @@ public class SwissKnifeItem extends Item {
         SwissKnifeMode mode = getEffectiveMode(stack, state);
         ItemStack tool = activeTool(stack, state);
         if (tool.isEmpty()) return super.mineBlock(stack, level, state, pos, miner);
+        ItemStack backup = tool.copy();
         boolean result = tool.getItem().mineBlock(tool, level, state, pos, miner);
-        setSlotStack(stack, mode, tool);
+        setSlotStack(stack, mode, protectDurability(backup, tool));
         return result;
     }
 
@@ -232,8 +257,9 @@ public class SwissKnifeItem extends Item {
         setMode(stack, SwissKnifeMode.SWORD);
         ItemStack sword = getSlotStack(stack, SwissKnifeMode.SWORD);
         if (sword.isEmpty()) return true;
+        ItemStack backup = sword.copy();
         boolean result = sword.getItem().hurtEnemy(sword, target, attacker);
-        setSlotStack(stack, SwissKnifeMode.SWORD, sword);
+        setSlotStack(stack, SwissKnifeMode.SWORD, protectDurability(backup, sword));
         return result;
     }
 
@@ -241,8 +267,9 @@ public class SwissKnifeItem extends Item {
     public void postHurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
         ItemStack sword = getSlotStack(stack, SwissKnifeMode.SWORD);
         if (sword.isEmpty()) return;
+        ItemStack backup = sword.copy();
         sword.getItem().postHurtEnemy(sword, target, attacker);
-        setSlotStack(stack, SwissKnifeMode.SWORD, sword);
+        setSlotStack(stack, SwissKnifeMode.SWORD, protectDurability(backup, sword));
     }
 
     @Override
