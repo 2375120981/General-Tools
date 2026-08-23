@@ -1,6 +1,5 @@
 package com.example.examplemod;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -52,10 +51,9 @@ public class SwissKnifeMenu extends AbstractContainerMenu
         this.addDataSlot(this.modeData);
         if (!knife.isEmpty())
         {
-            CompoundTag root = knife.getOrCreateTag().getCompound(SwissKnifeItem.TAG_SWISS);
             for (int i = 0; i < KNIFE_SLOTS; i++)
             {
-                container.setItem(i, ItemStack.of(root.getCompound("slot_" + (i + 1))));
+                container.setItem(i, SwissKnifeItem.getSlotStack(knife, SwissKnifeItem.SwissKnifeMode.values()[i + 1]).copy());
             }
         }
         // 瑞士刀 7 个工具槽（剑/镐/斧/铲/锄/剪刀/打火石）
@@ -83,6 +81,18 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     @Override
     public boolean stillValid(Player player)
     {
+        return true;
+    }
+
+    @Override
+    public boolean clickMenuButton(Player player, int id)
+    {
+        if (id < 0 || id >= SwissKnifeItem.SwissKnifeMode.values().length)
+        {
+            return false;
+        }
+        this.modeData.set(id);
+        SwissKnifeItem.setModeSetting(this.knifeStack, id);
         return true;
     }
 
@@ -151,21 +161,11 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     {
         if (!knifeStack.isEmpty())
         {
-            CompoundTag root = SwissKnifeItem.getSwissData(knifeStack);
-            root.putInt(SwissKnifeItem.TAG_MODE, this.modeData.get());
+            SwissKnifeItem.setModeSetting(knifeStack, this.modeData.get());
             for (int i = 0; i < KNIFE_SLOTS; i++)
             {
-                ItemStack s = container.getItem(i);
-                if (!s.isEmpty())
-                {
-                    root.put("slot_" + (i + 1), s.save(new CompoundTag()));
-                }
-                else
-                {
-                    root.remove("slot_" + (i + 1));
-                }
+                SwissKnifeItem.setSlotStack(knifeStack, SwissKnifeItem.SwissKnifeMode.values()[i + 1], container.getItem(i));
             }
-            SwissKnifeItem.setSwissData(knifeStack, root);
         }
     }
 

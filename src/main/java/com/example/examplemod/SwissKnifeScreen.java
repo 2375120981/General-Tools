@@ -39,7 +39,12 @@ public class SwissKnifeScreen extends AbstractContainerScreen<SwissKnifeMenu>
     private void addModeButton(int mode, int x, int width, int height, int y)
     {
         Button button = new ModeButton(this.leftPos + x, this.topPos + y, width, height, mode, (b) ->
-                ExampleMod.CHANNEL.sendToServer(new ModeSetPacket(mode)));
+        {
+            if (this.minecraft != null && this.minecraft.gameMode != null)
+            {
+                this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, mode);
+            }
+        });
         this.addRenderableWidget(button);
     }
 

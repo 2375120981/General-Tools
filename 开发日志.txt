@@ -1,0 +1,77 @@
+General Tools 1.21.1 NeoForge 开发日志
+======================================
+
+2026-08-23 09:09
+- 初始化项目：目标目录 1.21.1Neoforge 原为空目录，下载并采用 NeoForge 官方 1.21.1 ModDevGradle MDK 建立开发环境。
+- 开发环境：Minecraft 1.21.1、NeoForge 21.1.216、ModDevGradle 2.0.144、Gradle 9.2.1、Java 21。
+- 项目元数据：mod_id=generaltools、mod_name=General Tools、mod_version=1.4、mod_group_id=com.example.generaltools。
+- 构建产物命名统一为 generaltoolsV1.4_1.21.1NeoForge.jar。
+- Gradle 配置关闭常驻 Daemon 与配置缓存，插件解析增加阿里云 Gradle 插件镜像，并保留官方插件源作为回退。
+- 仅在 1.21.1Neoforge 目录开展移植；1.20.1Forge 目录保持未修改状态。
+
+2026-08-23 09:25
+- 从 1.20.1 Forge 版本迁移 General Tools V1.4 的 Java 源码、语言、模型、贴图、GUI、配方和物品标签资源。
+- 注册系统迁移：Forge DeferredRegister/RegistryObject 改为 NeoForge DeferredRegister/DeferredHolder；物品、菜单和创造模式标签均在 NeoForge 模组事件总线上注册。
+- 配置系统迁移：ForgeConfigSpec 改为 NeoForge ModConfigSpec；保留 config/generaltools_blacklist.toml、物品 ID 黑名单、物品 Tag 黑名单和内置 generaltools:blacklist 标签。
+- 事件系统迁移：Forge 事件、客户端 Tick 和玩家交互事件切换为 NeoForge 对应 API。
+- Java 目标版本由 Java 17 升级为 Java 21。
+
+2026-08-23 09:35
+- 物品持久化迁移：移除 1.20.1 的 ItemStack 根 NBT 直接读写方式。
+- 瑞士刀 7 个工具槽改用 minecraft:container（DataComponents.CONTAINER / ItemContainerContents）数据组件保存。
+- 自动/锁定模式改用 minecraft:custom_data 保存；当前贴图模式改用 minecraft:custom_model_data 保存。
+- 槽内工具数据由 ItemContainerContents 自动携带，继续保留剩余耐久 <= 1 时禁用工具、避免工具损坏的保护逻辑。
+- 当前槽位工具的附魔数据通过 minecraft:enchantments 数据组件同步到瑞士刀。
+- 保留自动模式、剑/镐/斧/铲/锄/剪刀/打火石锁定模式、工具挖掘与右键委托、剑攻击委托、剪羊毛和 tooltip 展示。
+- 保留扳手模式与 forge/c 通用 wrench 标签，使其它模组可将瑞士刀识别为扳手。
+
+2026-08-23 09:42
+- 网络同步迁移：删除旧 Forge SimpleChannel、NetworkRegistry 和 ModeSetPacket。
+- GUI 模式按钮改用原版 AbstractContainerMenu.clickMenuButton / handleInventoryButtonClick 通道同步，无需自定义网络包。
+- SwissKnifeMenu 加载和保存逻辑改为直接读写瑞士刀数据组件。
+- 资源格式迁移：1.21 数据包目录由 recipes 改为 recipe、tags/items 改为 tags/item。
+- 合成配方 1.21 格式适配：result.item 改为 result.id。
+- 新增 pack.mcmeta，pack_format=34。
+- 清理官方 MDK 遗留的 Example Mod 示例语言资源。
+- 新建 README.md，记录环境版本、构建命令、产物位置及主要迁移变化。
+
+2026-08-23 09:55
+- 第一次实际 compileJava 已进入 Minecraft 产物生成与 Java 编译阶段，说明 Gradle、Java、NeoForge 和 Minecraft 开发依赖配置正常。
+- 首次编译失败：NeoForge 1.21.1 中 MenuScreens.register 为私有方法，旧式客户端初始化注册方式无法访问。
+- 同时发现 EventBusSubscriber.bus / EventBusSubscriber.Bus 参数已弃用警告。
+
+2026-08-23 10:00
+- 修复客户端界面注册：改用 NeoForge RegisterMenuScreensEvent，并通过 event.register 注册 SwissKnifeScreen。
+- 移除 Config 和 ExampleModClient 中已弃用的 EventBusSubscriber.bus 参数。
+- 用户重新执行 gradlew.bat build --console=plain，Java 编译、资源处理、JAR 打包、assemble、check 和 build 全部完成。
+
+2026-08-23 10:04
+- 构建成功：BUILD SUCCESSFUL in 9s。
+- 构建产物：build/libs/generaltoolsV1.4_1.21.1NeoForge.jar。
+- 产物大小：45060 字节。
+- 当前尚未记录游戏内启动与功能实测，也未执行启动器 mods 目录部署；后续应测试 GUI、工具槽保存、各工具委托、模式贴图、剪羊毛、黑名单和跨模组 wrench 兼容。
+
+2026-08-23 10:15
+- 修复 1.21.1 版瑞士刀内部工具经验修补不生效：新增 PlayerXpEvent.XpChange 监听，玩家获得经验时遍历主手瑞士刀的 7 个真实槽位，按 1.21.1 原版 Mending 公式修复带经验修补且耐久未满的工具，并从本次经验中扣除已消耗部分。
+- 新增 getStoredSlotStack：经验修补直接读取槽位原始工具，工具即使只剩 1 点耐久、已被功能保护判定为不可用，也仍可被经验修补恢复；普通使用仍通过 getSlotStack 保持剩余 1 耐久保护。
+- 调整附魔继承边界：瑞士刀本体只继承与挖掘/破坏相关的效率、精准采集、时运、耐久；经验修补不复制到瑞士刀本体，而由上述事件单独处理；其它持续性或无关附魔不再复制。
+- 精准采集、时运等现有方块掉落继承路径保持不变。
+- 构建验证：Codex 沙箱账户缺少 Gradle 插件解析缓存且网络受限，未能在沙箱内运行 compileJava；需要由用户本机 CMD 重新执行 gradlew.bat build --console=plain 验证。
+
+2026-08-23 10:20
+- 模组附魔自动兼容：移除仅允许效率/精准采集/时运/耐久四项原版附魔的固定白名单。
+- 新规则直接读取 1.21.1 数据驱动附魔的效果组件：槽内工具已有的所有非持续型附魔均可继承，因此模组提供的挖掘效率、方块掉落、耐久、击中方块等工具附魔无需逐个写死注册名即可兼容。
+- 持续性过滤：带 EnchantmentEffectComponents.TICK 或 LOCATION_CHANGED 的附魔不复制到瑞士刀，避免持续 tick、移动或位置变化效果把瑞士刀当作真实装备执行。
+- 经验修补保留：Mending 仍不复制到无耐久的瑞士刀本体，但继续由 PlayerXpEvent.XpChange 单独修复槽内真实工具并消耗经验。
+- 原版精准采集、时运、效率和耐久属于非持续型效果，继续正常继承。
+- 构建验证仍需由用户本机 CMD 执行 gradlew.bat build --console=plain。
+
+2026-08-23 15:43
+- 分析根目录错误报告“错误报告-2026-8-23_15.37.15.zip”：整合包使用 NeoForge 21.1.215，模组因元数据要求 NeoForge 21.1.216 及以上而在加载阶段被拒绝；不是代码执行崩溃。
+- 根因：官方 MDK 模板直接用开发依赖 neo_version 生成发布 JAR 的最低运行版本，导致编译用补丁版本被错误地变成硬性运行要求。
+- 版本依赖解耦：保留 neo_version=21.1.216 作为开发/编译版本；新增 neo_version_range=[21.1.0,)，作为发布 JAR 的运行兼容范围。
+- build.gradle 的 generateModMetadata 增加 neo_version_range 展开项；neoforge.mods.toml 改用 versionRange="${neo_version_range}"。
+- 结果：重新构建后的 JAR 可在 NeoForge 21.1.0 及以上运行，包括错误报告中的 21.1.215；以后升级开发用补丁版本也不会自动提高玩家端最低要求。
+- README 已补充开发版本与运行依赖范围的区别。
+- 1.20.1Forge 工作区保持未修改。
+- 需要重新执行 gradlew.bat build --console=plain 生成带新元数据的 JAR；旧 JAR 的依赖声明不会自动改变。
