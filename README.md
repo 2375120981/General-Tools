@@ -31,3 +31,7 @@ General Tools 的 Minecraft 1.21.1 NeoForge 移植版，提供带 7 个工具槽
 - 配方与标签目录已更新为 1.21 的单数目录格式。
 
 配置文件仍为 `config/generaltools_blacklist.toml`。
+## License
+
+General Tools is licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 c09nat.
