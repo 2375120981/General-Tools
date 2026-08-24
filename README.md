@@ -20,7 +20,7 @@ General Tools 的 Minecraft 1.21.1 NeoForge 移植版，提供带 7 个工具槽
 .\gradlew.bat build --console=plain
 ```
 
-构建产物：`build/libs/generaltoolsV1.5_1.21.1NeoForge.jar`。
+构建产物：`build/libs/generaltoolsV1.5.1_1.21.1NeoForge.jar`。
 
 ## 主要变化
 

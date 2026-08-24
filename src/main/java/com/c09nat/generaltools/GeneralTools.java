@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -14,8 +14,8 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-@Mod(ExampleMod.MODID)
-public class ExampleMod {
+@Mod(GeneralTools.MODID)
+public class GeneralTools {
     public static final String MODID = "generaltools";
 
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
@@ -34,7 +34,7 @@ public class ExampleMod {
                     .displayItems((parameters, output) -> output.accept(SWISS_KNIFE.get()))
                     .build());
 
-    public ExampleMod(IEventBus modBus, ModContainer container) {
+    public GeneralTools(IEventBus modBus, ModContainer container) {
         ITEMS.register(modBus);
         MENUS.register(modBus);
         TABS.register(modBus);

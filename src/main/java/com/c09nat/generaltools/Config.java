@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@EventBusSubscriber(modid = ExampleMod.MODID)
+@EventBusSubscriber(modid = GeneralTools.MODID)
 public final class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     private static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLISTED_TOOLS = BUILDER
@@ -28,7 +28,7 @@ public final class Config {
 
     static final ModConfigSpec SPEC = BUILDER.build();
     public static final TagKey<Item> BLACKLIST_TAG = TagKey.create(Registries.ITEM,
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "blacklist"));
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "blacklist"));
     private static Set<Item> blacklistedTools = Collections.emptySet();
     private static Set<TagKey<Item>> blacklistedTags = Collections.emptySet();
 

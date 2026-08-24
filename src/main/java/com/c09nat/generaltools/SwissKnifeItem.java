@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -49,7 +49,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
-@EventBusSubscriber(modid = ExampleMod.MODID)
+@EventBusSubscriber(modid = GeneralTools.MODID)
 public class SwissKnifeItem extends Item {
     public static final String TAG_MODE = "mode";
     public static final int MODE_AUTO = 0;
