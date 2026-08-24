@@ -35,7 +35,7 @@
 .\gradlew.bat build
 ```
 
-构建产物：`build/libs/generaltoolsV1.5_1.20.1Forge.jar`，放入 `mods` 目录即可。
+构建产物：`build/libs/generaltoolsV1.5.1_1.20.1Forge.jar`，放入 `mods` 目录即可。
 
 ## 配置
 
@@ -45,8 +45,8 @@
 ## 项目结构
 
 ```
-src/main/java/com/example/examplemod/
-├── ExampleMod.java       主类（注册、创造标签、网络通道、GUI 注册）
+src/main/java/com/c09nat/generaltools/
+├── GeneralTools.java     主类（注册、创造标签、网络通道、GUI 注册）
 ├── Config.java           配置（黑名单 ID / Tag / 内置标签）
 ├── SwissKnifeItem.java   瑞士刀物品（模式、工具委托、通用扳手兼容、附魔、tooltip）
 ├── SwissKnifeMenu.java   容器菜单（7 工具槽 + 黑名单判定）

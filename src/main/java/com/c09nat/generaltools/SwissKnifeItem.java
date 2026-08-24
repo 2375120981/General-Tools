@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import com.google.common.collect.Multimap;
 import net.minecraft.ChatFormatting;
@@ -46,7 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
-@Mod.EventBusSubscriber(modid = ExampleMod.MODID)
+@Mod.EventBusSubscriber(modid = GeneralTools.MODID)
 public class SwissKnifeItem extends Item
 {
     public static final String TAG_SWISS = "swiss_knife";

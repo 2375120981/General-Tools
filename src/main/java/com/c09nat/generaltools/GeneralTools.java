@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
@@ -23,8 +23,8 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 // The value here should match an entry in the META-INF/mods.toml file
-@Mod(ExampleMod.MODID)
-public class ExampleMod
+@Mod(GeneralTools.MODID)
+public class GeneralTools
 {
     // Define mod id in a common place for everything to reference
     public static final String MODID = "generaltools";
@@ -55,7 +55,7 @@ public class ExampleMod
             .displayItems((parameters, output) -> output.accept(SWISS_KNIFE.get()))
             .build());
 
-    public ExampleMod(FMLJavaModLoadingContext context)
+    public GeneralTools(FMLJavaModLoadingContext context)
     {
         IEventBus modEventBus = context.getModEventBus();
 

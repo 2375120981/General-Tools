@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 // Swiss knife config: items that cannot be placed into the tool slots.
-@Mod.EventBusSubscriber(modid = ExampleMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@Mod.EventBusSubscriber(modid = GeneralTools.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config
 {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
@@ -54,7 +54,7 @@ public class Config
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static final TagKey<Item> BLACKLIST_TAG = TagKey.create(Registries.ITEM,
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "blacklist"));
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "blacklist"));
 
     public static Set<Item> blacklistedTools = Collections.emptySet();
     public static Set<TagKey<Item>> blacklistedTags = Collections.emptySet();

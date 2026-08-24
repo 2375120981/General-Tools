@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -26,13 +26,13 @@ public class SwissKnifeMenu extends AbstractContainerMenu
     private static final int KNIFE_SLOTS = 7;
 
     private static final ResourceLocation[] SLOT_BACKGROUNDS = {
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_sword"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_pickaxe"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_axe"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_shovel"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_hoe"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_scissors"),
-            ResourceLocation.fromNamespaceAndPath(ExampleMod.MODID, "item/empty_slot_flint_and_steel"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_sword"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_pickaxe"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_axe"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_shovel"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_hoe"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_scissors"),
+            ResourceLocation.fromNamespaceAndPath(GeneralTools.MODID, "item/empty_slot_flint_and_steel"),
     };
 
     private final ItemStack knifeStack;
@@ -47,7 +47,7 @@ public class SwissKnifeMenu extends AbstractContainerMenu
 
     public SwissKnifeMenu(int id, Inventory playerInventory, ItemStack knife, Level level)
     {
-        super(ExampleMod.SWISS_KNIFE_MENU.get(), id);
+        super(GeneralTools.SWISS_KNIFE_MENU.get(), id);
         this.owner = playerInventory.player;
         this.knifeStack = knife;
         this.modeData.set(SwissKnifeItem.getModeSetting(knife));

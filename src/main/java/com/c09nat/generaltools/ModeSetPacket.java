@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;

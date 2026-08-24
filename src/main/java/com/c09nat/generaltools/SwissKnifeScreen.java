@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.c09nat.generaltools;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -39,7 +39,7 @@ public class SwissKnifeScreen extends AbstractContainerScreen<SwissKnifeMenu>
     private void addModeButton(int mode, int x, int width, int height, int y)
     {
         Button button = new ModeButton(this.leftPos + x, this.topPos + y, width, height, mode, (b) ->
-                ExampleMod.CHANNEL.sendToServer(new ModeSetPacket(mode)));
+                GeneralTools.CHANNEL.sendToServer(new ModeSetPacket(mode)));
         this.addRenderableWidget(button);
     }
 
