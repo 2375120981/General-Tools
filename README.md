@@ -61,3 +61,7 @@ src/main/resources/
 ## 许可
 
 本模组基于 Minecraft Forge 开发，Forge 相关许可见 `LICENSE.txt`。模组自身代码许可请以发布仓库声明为准。
+## License
+
+General Tools is licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 c09nat.
