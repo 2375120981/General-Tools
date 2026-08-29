@@ -10,6 +10,7 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -80,6 +81,12 @@ public class GeneralTools
         {
             // Register the swiss knife GUI screen
             event.enqueueWork(() -> MenuScreens.<SwissKnifeMenu, SwissKnifeScreen>register(SWISS_KNIFE_MENU.get(), (menu, inv, title) -> new SwissKnifeScreen(menu, inv, title)));
+        }
+
+        @SubscribeEvent
+        public static void registerKeyMappings(RegisterKeyMappingsEvent event)
+        {
+            event.register(ClientEvents.MODE_WHEEL_KEY);
         }
     }
 }
