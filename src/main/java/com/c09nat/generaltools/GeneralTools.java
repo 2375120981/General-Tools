@@ -13,6 +13,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 @Mod(GeneralTools.MODID)
 public class GeneralTools {
@@ -38,6 +40,12 @@ public class GeneralTools {
         ITEMS.register(modBus);
         MENUS.register(modBus);
         TABS.register(modBus);
+        modBus.addListener(GeneralTools::registerPayloads);
         container.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "generaltools_blacklist.toml");
+    }
+
+    private static void registerPayloads(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("1");
+        registrar.playToServer(ModeSetPayload.TYPE, ModeSetPayload.STREAM_CODEC, ModeSetPayload::handle);
     }
 }
