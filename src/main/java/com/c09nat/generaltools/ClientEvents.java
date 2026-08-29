@@ -40,7 +40,8 @@ public class ClientEvents
         if (hit.getType() == HitResult.Type.BLOCK)
         {
             BlockState state = mc.level.getBlockState(((BlockHitResult) hit).getBlockPos());
-            SwissKnifeItem.SwissKnifeMode mode = SwissKnifeItem.modeFor(state);
+            // 统一由有效模式解析器决定并写入外观，避免贴图模式与实际槽位工具不一致。
+            SwissKnifeItem.SwissKnifeMode mode = SwissKnifeItem.getEffectiveMode(mainHand, state);
             // 仅模式变化时写 NBT，减少重复写入
             if (mode.id != lastAutoMode)
             {
