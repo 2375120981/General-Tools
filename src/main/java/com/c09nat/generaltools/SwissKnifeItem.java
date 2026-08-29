@@ -618,16 +618,25 @@ public class SwissKnifeItem extends Item
     public static SwissKnifeMode getEffectiveMode(ItemStack stack, BlockState state)
     {
         int setting = getModeSetting(stack);
+        SwissKnifeMode mode;
         if (setting == MODE_AUTO)
         {
-            return modeFor(state);
+            mode = modeFor(stack, state);
         }
-        SwissKnifeMode[] modes = SwissKnifeMode.values();
-        if (setting >= 0 && setting < modes.length)
+        else
         {
-            return modes[setting];
+            SwissKnifeMode[] modes = SwissKnifeMode.values();
+            mode = setting >= 0 && setting < modes.length ? modes[setting] : SwissKnifeMode.NONE;
         }
-        return SwissKnifeMode.NONE;
+
+        // 外观与实际委托必须使用同一个最终模式；槽位为空/工具已不可用时统一显示 NONE。
+        if (mode != SwissKnifeMode.NONE && mode != SwissKnifeMode.WRENCH
+                && getSlotStack(stack, mode).isEmpty())
+        {
+            mode = SwissKnifeMode.NONE;
+        }
+        setMode(stack, mode);
+        return mode;
     }
 
     public static void setMode(ItemStack stack, SwissKnifeMode mode)
@@ -658,5 +667,27 @@ public class SwissKnifeItem extends Item
             return SwissKnifeMode.HOE;
         }
         return SwissKnifeMode.NONE;
+    }
+
+    /**
+     * 仿照 Jade 的候选工具测试思路，直接测试瑞士刀槽内的真实工具。
+     * 按工具槽位倒序测试，以便蜘蛛网等支持多个工具的方块优先使用靠后的剪刀槽。
+     */
+    public static SwissKnifeMode modeFor(ItemStack knife, BlockState state)
+    {
+        SwissKnifeMode[] priority = {
+                SwissKnifeMode.SCISSORS, SwissKnifeMode.HOE,
+                SwissKnifeMode.SHOVEL, SwissKnifeMode.AXE,
+                SwissKnifeMode.PICKAXE, SwissKnifeMode.SWORD
+        };
+        for (SwissKnifeMode mode : priority)
+        {
+            ItemStack tool = getSlotStack(knife, mode);
+            if (!tool.isEmpty() && (tool.isCorrectToolForDrops(state) || tool.getDestroySpeed(state) > 1.0F))
+            {
+                return mode;
+            }
+        }
+        return modeFor(state);
     }
 }
