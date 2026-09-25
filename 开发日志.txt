@@ -1,0 +1,693 @@
+General Tools 开发日志
+======================
+
+2026-08-17 16:09
+- 初始化项目：在 General Tools 文件夹部署 Forge 1.20.1-47.4.22 MDK 官方模板。
+- 修改 gradle.properties：mod_name=General Tools，mod_id=generaltools，mod_group_id=com.example.generaltools。
+- 新增物品 swiss_knife_sword（瑞士军刀剑），注册于 ExampleMod.java 的 ITEMS DeferredRegister，并加入创造模式标签 generaltools:example_tab。
+- 使用贴图 swiss_knife_sword_16x16_v2.png（位于 resources/assets/generaltools/textures/item/）。
+- 新增物品模型 models/item/swiss_knife_sword.json 与语言文件 lang/en_us.json、lang/zh_cn.json。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+
+2026-08-17 （下午，会话续）
+- 部署：将 build\libs\generaltools-1.0.0.jar 复制到 启动器\.minecraft\versions\1.20.1-Forge_47.4.22\mods\。
+- mods 目录原无 generaltools 旧 jar，无需版本备份。
+- 完成：mod 已加载待测试，可通过创造模式标签 generaltools:example_tab 查找 swiss_knife_sword。
+
+2026-08-17 20:07
+- 移除示例物品 example_block（方块及 BlockItem）、example_item，以及上一轮新增的 swiss_knife_sword。
+- 同步移除示例创造标签 generaltools:example_tab 及其相关注册（BLOCKS、CREATIVE_MODE_TABS DeferredRegister 一并删除）。
+- 清理资源：删除 models/item/swiss_knife_sword.json、textures/item/swiss_knife_sword_16x16_v2.png；en_us.json、zh_cn.json 清空（仅保留空 JSON）。
+- 保留 ITEMS DeferredRegister（空）与 Config 示例配置，便于后续新增物品。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_200747.jar，新 jar 已复制到 mods 目录。
+- 完成：模组现无任何自定义物品与创造标签，可启动游戏验证。
+
+2026-08-17 20:38
+- 新增物品 swiss_knife（瑞士刀，id: generaltools:swiss_knife），重新建立创造标签 generaltools:example_tab。
+- 功能设计（用户设想）：
+  - 潜行+右键（对空气）打开 5 槽 GUI（剑/镐/斧/铲/锄），槽位按工具类型限制，槽位非空即激活对应功能；
+  - 槽位数据存于瑞士刀 NBT（键 swiss_knife/slot_0..4），放入背包不丢失；
+  - 破坏方块时按目标方块自动选择模式（镐/斧/铲/锄），挖掘速度与掉落判定均委托给槽位内对应工具（强度跟随放入的工具）；
+  - 对方块右键按目标自动执行 ToolAction：斧去皮 / 铲铲平 / 锄耕地；
+  - 攻击生物时按剑槽内剑的伤害计算（剑槽空则无攻击力）；
+  - 贴图随当前模式切换（NBT CustomModelData 0-5 + 模型 overrides）。
+- 新增文件：
+  - SwissKnifeItem.java（物品 + 模式/NBT 工具 + 挖掘/右键/攻击逻辑 + GUI 打开）；
+  - SwissKnifeMenu.java（菜单 + SwissKnifeSlot 类型限制）；
+  - SwissKnifeScreen.java（客户端 GUI，基于 generic_54 容器背景）。
+- ExampleMod.java：注册 MENUS（MenuType）、重新注册 CREATIVE_MODE_TABS，并在 FMLClientSetupEvent 中注册屏幕。
+- 资源：6 张占位贴图（swiss_knife/sword/pickaxe/axe/shovel/hoe，脚本生成）+ 6 个模型（overrides 按 custom_model_data 0-5）+ 语言文件（含 GUI 标题与提示）。
+- 构建成功：build\libs\generaltools-1.0.0.jar（仅 MDK 自带 ResourceLocation 构造弃用警告）。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_203854.jar，新 jar 已复制到 mods 目录。
+- 待测试：GUI 打开与槽位限制、挖掘自动切换、右键去皮/耕地/铲平、攻击伤害、贴图切换。
+- 说明：贴图为脚本生成的占位图，后续可替换为正式美术资源。
+
+2026-08-17 20:43
+- 替换贴图为正式美术资源（用户提供，swiss_tools_final_unified/16x16，16x16 分辨率）。
+- 各模式贴图对应：swiss_knife_sword/pickaxe/axe/shovel/hoe；基础贴图 swiss_knife.png 复用剑贴图（默认状态显示剑）。
+- 调整攻击设计（用户确认）：默认状态（无工具放入）瑞士刀即具备铁剑能力——攻击伤害 modifier 改为 5.0（3+铁 tier 加成），攻速 modifier 修正为 -2.4（剑速，原 1.6 为误设）。
+- hurtEnemy 改为补差逻辑：剑槽放剑时按剑槽剑补足超出铁剑的伤害并计入其附魔；默认/铁剑时无额外伤害。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_204308.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 21:53
+- 瑞士刀改为不可堆叠：Item.Properties().stacksTo(1)。
+- GUI 调整为紧凑布局（用户确认：紧凑界面含背包）：顶部一行 5 工具槽 + 下方玩家背包（3 行 + 热栏）。
+- 自绘紧凑背景图 textures/gui/swiss_knife_gui.png（176x133，原版风格：刀槽面板 + 背包面板），替换原 generic_54 六行大背景。
+- SwissKnifeMenu 背包槽坐标调整为紧凑布局（y=53/71/89，热栏 y=111）；SwissKnifeScreen 背景指向新图、imageHeight=133、移除提示文字。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_215328.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 21:59
+- 修复 GUI 背景错位：弃用自绘背景，改用原版漏斗 UI（minecraft:textures/gui/container/hopper.png，176x133）。
+- 槽位坐标按原版 HopperMenu 布局对齐：刀槽 y=20、背包 y=51/69/87、热栏 y=109、imageHeight=133、inventoryLabelY=imageHeight-94。
+- 删除自绘背景 textures/gui/swiss_knife_gui.png。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_215923.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:07
+- 为瑞士刀 GUI 的 5 个工具槽添加空槽背景图标（清晰标示各槽位功能）。
+- 图标：复制模式贴图为 textures/item/empty_slot_{sword,pickaxe,axe,shovel,hoe}.png（16x16，自动进入物品图集）。
+- SwissKnifeMenu：为每个刀槽调用 slot.setBackground(sprite, sprite)（1.20.1 需双参数），空槽时显示工具图标，放入工具后自动被物品覆盖。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_220706.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:17
+- 修复打开 GUI 崩溃（NPE: AtlasSet.getTextureAtlas 返回 null）。
+- 根因：1.20.1 Slot.setBackground(atlas, sprite) 的两个参数分别是图集位置与 sprite；此前误把两个参数都传成 sprite（generaltools:item/empty_slot_sword），renderSlot 将其当作图集名查找 AtlasSet 导致 null。
+- 修复：第一个参数改为 InventoryMenu.BLOCK_ATLAS（blocks 图集），sprite 保持 generaltools:item/empty_slot_*。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_221707.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:30
+- 修复"放入工具不影响破坏效率"。
+- 根因一（关键）：槽位 NBT 读写键错位——写入用容器索引 slot_0..4，读取用模式 ordinal slot_1..5（SWORD=1..HOE=5），导致永远读不到已放入的工具。统一为 slot_{index+1}，与 mode.ordinal() 一致。
+- 根因二：slotsChanged 依赖容器 listener，触发不可靠；新增重写 broadcastChanges() 每 tick 兜底写回 NBT（内容不变时无同步开销）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_223032.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:36
+- 修复剑伤害继承问题：此前采用"铁剑下限补差"逻辑（Math.max(0, 剑伤害-铁剑)），导致石/木/金剑等低于铁剑的剑伤害被钳制为 6。
+- 改为完全继承：瑞士刀自身 ATTACK_DAMAGE modifier 设为 0（基础攻击 1），hurtEnemy 按剑槽剑的 getDamage() 全额追加（含其锋利附魔），无剑时默认按铁剑（modifier 5）。
+- 结果：木/金剑 4、石剑 5、铁剑 6、钻剑 7、合金剑 8，默认（无剑）6。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_223601.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:40
+- 调整剑特性（用户确认）：不装剑时伤害为空手伤害（基础 1），装上剑后完整继承剑的伤害与附魔。
+- hurtEnemy：无剑槽或非剑时不再追加伤害（空手）；有剑时全额继承 swordItem.getDamage() + 锋利类附魔（getDamageBonus）+ 火焰附加（FIRE_ASPECT，点燃 4*等级 秒）。
+- 移除"默认铁剑"逻辑（Tiers 引用删除，KNIFE_ATTRIBUTES 攻击 modifier 保持 0）。
+- 工具附魔继承：getDestroySpeed 额外加上槽位工具的效率附魔加成（efficiency^2 + 1，与原版一致）。
+- 已知限制：时运/精准采集等掉落类附魔暂未继承（掉落逻辑基于主手物品，无法在不改掉落路径下拦截），后续可考虑事件/mixin 扩展。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_224000.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:46
+- 修复 tooltip 属性同步：重写 getAttributeModifiers(EquipmentSlot, ItemStack)，剑槽有剑时动态返回剑的伤害/攻速 modifier（伤害=swordItem.getDamage()，攻速=-2.4），使悬浮显示与实际伤害一致；无剑时保持空手（modifier 0）。
+- 右键功能调整（用户确认）：仅保留斧去皮、锄耕地；移除铲的铲平（镐、铲右键不做处理）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_224614.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:50
+- 修复工具右键功能不生效。
+- 根因：原版方块执行 ToolAction（去皮/耕地）前会检查 context.getItemInHand().canPerformAction(toolAction)，瑞士刀未重写该方法（默认 false），导致 getToolModifiedState 恒为 null。
+- 修复：重写 canPerformAction，AXE_STRIP 在斧槽有斧时返回 true，HOE_TILL 在锄槽有锄时返回 true，其余 false。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_225005.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 22:55
+- 右键功能顺序调整为：斧去皮 → 锄耕地 → 铲铲平（useOn 与 canPerformAction 均支持铲的 SHOVEL_FLATTEN）。
+- 新增 tooltip 实时展示：重写 appendHoverText，显示 5 槽位使用情况（剑/镐/斧/铲/锄，空槽显示"空"，非空显示工具名）与右键功能生效顺序。
+- 语言文件新增 tooltip 键（en_us/zh_cn）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_225505.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 23:02
+- tooltip 右键顺序文本改为两行：「当前工具右键生效顺序：」+「斧→锄→铲」（新增 right_click_order 语言键）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_230156.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 23:08
+- 右键优先级改为：斧去皮 → 铲铲平 → 锄耕地（铲＞锄）。
+- 依据：草方块/泥土可被铲成土径，土径不在铲的目标内但可被锄成耕地（原版 TILLABLES 含 dirt_path），故可"第一次右键铲平、第二次右键锄地"。
+- tooltip 说明更新：顺序改为"斧→铲→锄"，新增提示"铲平的方块可再次右键锄成耕地"（shovel_then_hoe 语言键）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_230741.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 23:12
+- 右键执行与工具槽状态分离：useOn 不再检查槽位是否有对应工具，无论槽位状态如何都按固定顺序进行右键判断。
+- 右键判断顺序改为：剑→镐→斧→铲→锄（剑、镐暂无右键功能，仅占位顺序）；canPerformAction 对 AXE_STRIP/SHOVEL_FLATTEN/HOE_TILL 恒返回 true。
+- tooltip 顺序文本更新为"剑→镐→斧→铲→锄"（保留"铲平可再锄地"提示）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_231229.jar，新 jar 已复制到 mods 目录。
+
+2026-08-17 23:15
+- 更正右键判断逻辑：右键功能取决于槽位内是否放置了对应类型工具（isActive），与当前切换/显示的工具状态无关（例：即使当前处于斧状态，只要铲槽有铲，右键营火仍可熄灭）。
+- 判断顺序：剑→镐→斧→铲→锄（剑、镐有工具时也进入判断但暂无功能）；canPerformAction 按槽位工具返回。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260817_231455.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 12:25
+- 修复营火无法扑灭：原版营火熄灭在 ShovelItem.useOn 内特殊处理（instanceof CampfireBlock + CampfireBlock.dowse + levelEvent 1009），与 ToolAction 机制无关，故 getToolModifiedState(SHOVEL_FLATTEN) 对营火恒返回 null。
+- 在瑞士刀铲分支复刻原版逻辑：铲槽有铲且目标为点燃的营火时，播放熄灭事件、调用 CampfireBlock.dowse、扣耐久并返回成功。
+- 注意：mapped 环境中方法名为 dowse（原反编译 srg 名为 m_152749_/extinguish）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_122506.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 12:57
+- 引入 Mixin，移除逐个针对特例的营火熄灭复刻逻辑。
+- Mixin 方案：接口混入（implements IForgeBlock）给 CampfireBlock 添加 getToolModifiedState 实现，SHOVEL_FLATTEN 且 LIT 时调用 CampfireBlock.dowse 并返回熄灭状态；瑞士刀铲分支经 getToolModifiedState 自动触发。
+- 配置：新增 src/main/resources/generaltools.mixins.json；mods.toml 增加 [[mixins]] 段。
+- 采用接口混入方式（无 @Inject 字符串方法），reobf 时方法名保持 getToolModifiedState（Forge 接口方法不参与映射），无需 SpongeGradle 插件与 refmap；build.gradle 无改动。
+- 已移除 SwissKnifeItem.useOn 中手动营火处理块及 CampfireBlock import。
+- 构建成功：build\libs\generaltools-1.0.0.jar（reobf 校验：LIT/dowse 已转 srg，接口方法名正确）。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_125742.jar，新 jar 已复制到 mods 目录。
+- 待测试：营火熄灭是否经 Mixin 生效；若 mixin 注入失败（required=true）游戏会启动崩溃，需查看日志。
+
+2026-08-18 13:02
+- canPerformAction 改为启发式匹配：按 ToolAction 名称关键词判定工具类型（shovel/pickaxe/sword/axe/hoe），按槽位 isActive 返回，提升对自定义 ToolAction（其它 mod 的斧/镐等特殊互动）的通用适配。
+- 注意匹配顺序：先 shovel→pickaxe→sword→axe→hoe（避免 pickaxe 含 axe、shovel 含 hoe 的子串误判）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_130240.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 13:28
+- 新增模式自动/锁定开关（GUI 6 个单选按钮：自动/剑/镐/斧/铲/锄）。
+- 核心变更：右键功能只与当前生效模式绑定，不再遍历所有已生效工具。自动模式下按目标方块自动选模式（草方块→铲、原木→斧）且右键只执行当前模式功能；锁定模式下固定该模式。
+- SwissKnifeItem：新增 TAG_MODE/setModeSetting/getModeSetting/getEffectiveMode；getDestroySpeed/isCorrectToolForDrops/useOn 改用 getEffectiveMode；getSlotStack 对 NONE 返回空；tooltip 改显示当前模式（移除右键顺序文本）。
+- SwissKnifeMenu：新增 modeData DataSlot 同步模式设置；槽位坐标调整为新布局（刀槽 y=17、背包 y=64/82/100、热栏 y=124）。
+- 网络：新增 ModeSetPacket + ExampleMod 注册 SimpleChannel；点击按钮发送到服务端写 NBT 并更新菜单 DataSlot。
+- SwissKnifeScreen：新增 6 个 ModeButton（自动/剑/镐/斧/铲/锄），选中高亮，点击发送网络包；换用新背景（176x151，含开关行区域）。
+- 语言：新增 mode/auto tooltip 键，移除 right_click 系列键。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_132808.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 13:33
+- 修复模式开关不生效：根因是 saveToNbt 每次用 new CompoundTag() 重建根标签，只写槽位，把 mode 设置抹掉（每次 broadcastChanges 覆盖）。
+- 修复：saveToNbt 改为基于 getSwissData(knifeStack) 保留现有数据（含 mode），只更新槽位；空槽 remove 对应键。
+- UI 改回原版风格：弃用自绘背景，改用原版 generic_27.png（176x166）；刀槽放第一行（y=17）、开关按钮放第二行格子（y=35）、背包 y=84/102/120、热栏 y=142、inventoryLabelY=72。删除自绘 swiss_knife_gui.png。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_133336.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 13:45
+- 修复 UI 紫黑块：1.20.1 原版无 generic_27.png（容器屏幕统一用 generic_54.png），改回 generic_54.png；布局改为 6 行容器标准位置（刀槽 y=17、开关 y=35、背包 y=140/158/176、热栏 y=194、imageHeight=222、inventoryLabelY=128）。
+- 修复右键铲/锄不生效（锁定模式下）：锄地（HOE_TILL）与铲平（SHOVEL_FLATTEN）在原版经 HoeItem.TILLABLES / ShovelItem.FLATTENABLES 注册表（走 getToolModifiedState 对泥土/草方块返回 null）。为 SHOVEL 分支加 FLATTENABLES 兜底（含上方空检查），HOE 分支加 TILLABLES 兜底（Pair<Predicate,Consumer> 方式，含音效/耐久）。
+- 新增 Access Transformer（META-INF/accesstransformer.cfg）：开放 ShovelItem.f_43110_（FLATTENABLES）与 HoeItem.f_41332_（TILLABLES）；build.gradle 配置 accessTransformer。
+- saveToNbt 双保险：每 tick 从 modeData 写回 TAG_MODE 到 NBT，防止模式设置被覆盖。
+- ModeSetPacket 增加调试日志（收到模式时输出 "ModeSetPacket received, mode=x"），用于排查网络链路。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_134523.jar，新 jar 已复制到 mods 目录。
+- 待验证：UI 正常显示；锁定模式生效（若仍不生效，请查看 latest.log 中是否有 "ModeSetPacket received" 日志）。
+
+2026-08-18 13:56
+- 大重构实现"完全继承"（需求4）：
+  - 右键委托：useOn 改为把 UseOnContext 直接委托给当前生效模式槽位工具的 useOn（槽位工具自身处理去皮/耕地/铲平/营火/自定义右键功能），删除手动 switch 与 FLATTENABLES/TILLABLES 兜底。
+  - 附魔继承：新增 applyToolEnchantments，把当前模式槽位工具的附魔合并写入瑞士刀 NBT "Enchantments"，使原版机制自动生效（效率/时运/精准/锋利/火焰附加/击退等）。调用时机：getDestroySpeed、mineBlock、useOn、getAttributeModifiers（攻击前）。
+  - 挖掘速度不再手动加效率（合并附魔后由原版 Player.getDigSpeed 自动结算）；hurtEnemy 只补剑 modifier（锋利等由合并附魔生效）。
+  - 新增 mineBlock 委托（继承范围挖掘、耐久消耗等挖掘触发效果）。
+- 注意：附魔合并使瑞士刀出现附魔光效且 tooltip 显示继承附魔（"相当于手持槽位工具"的体现）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_135631.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 14:01
+- 修复自动模式对草方块右键崩溃（StackOverflowError 无限递归）。
+- 根因：Forge 将 ItemStack.useOn 替换为 ForgeHooks.onPlaceItemIntoWorld，其内部使用 context.getItemInHand()（瑞士刀）的 item.useOn；因此 tool.useOn(context) 实际执行的是瑞士刀自身 useOn，形成死循环。
+- 修复：改为直接调用槽位工具的 Item.useOn（tool.getItem().useOn(context)），绕过 ItemStack.useOn 的 ForgeHooks 递归。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_140106.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 15:53
+- 修复锄模式无法耕地。
+- 根因（经诊断日志确认）：ToolActions.HOE_TILL 的 name 是 "till"（而非 "hoe_till"），canPerformAction 启发式 contains("hoe") 匹配失败 → getToolModifiedState 返回 null → 锄地不生效。
+- 修复：启发式扩展归类——shovel 或 flatten → 铲槽；pickaxe → 镐槽；sword → 剑槽；axe → 斧槽；hoe 或 till → 锄槽。保持通用归类方式（非功能特化）。
+- 移除 useOn 诊断日志。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_155329.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 19:40
+- 通用右键委托（兼容 ProjectE 等 mod 工具右键）：
+  - 根因：ProjectE 工具右键（mineOreVeinsInAOE）用 player.getItemInHand(hand) 读取工具，瑞士刀无其充能 capability，功能失效。
+  - 方案：useOn 构造工具版 UseOnContext（itemInHand=槽位工具），withToolInHand 临时把玩家主手替换为槽位工具执行 tool.getItem().useOn(toolContext)，finally 恢复主手并写回工具状态（恢复耐久原值=模板不消耗，保留 NBT/充能变化）。
+  - 新增 setSlotStack 写回槽位工具到 NBT。
+- 潜行右键条件修正：useOn 最终结果 PASS 且潜行时返回 FAIL（阻止 Minecraft 回退调用 use 打开 GUI）；对空气潜行右键仍打开 GUI。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_194003.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 19:52
+- 耐久正常消耗 + 保护机制（用户确认）：
+  - withToolInHand 移除耐久恢复：右键使用工具正常扣耐久并写回（充能等状态保留）。
+  - getSlotStack 加保护：剩余耐久 ≤ 1 时视为空槽（功能禁用，等效空槽；工具保留 1 耐久不损坏）；覆盖右键/挖掘/攻击/tooltip 所有使用路径；无耐久工具（maxDamage=0）不受影响。
+  - GUI 槽位保持显示工具（耐久 1 仍显示，可取出修复后放回重新启用）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_195151.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 20:11
+- 清理冗余代码与残留的单独适配（全面审查结果）：
+  - 删除 CampfireBlockMixin.java（营火已由委托 ShovelItem.useOn 的 instanceof 分支处理，Mixin 不再触发）。
+  - 删除 generaltools.mixins.json、META-INF/accesstransformer.cfg、空的 mixin 目录。
+  - mods.toml 移除 [[mixins]] 段。
+  - build.gradle 移除 accessTransformer 配置（恢复注释）。
+- 保留：通用委托（withToolInHand）、附魔继承（applyToolEnchantments）、canPerformAction 名称归类——均为通用机制。
+- 挖掘/攻击耐久行为按用户实测保持现状（符合预期）；攻击不消耗剑槽耐久（未测试，说明）。
+- 构建成功：build\libs\generaltools-1.0.0.jar（jar 内已无 mixin/AT 残留）。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_201109.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 21:00
+- 修复 GUI 三个问题：上半部分大箱子多余格子、背包垂直错位、tooltip 不显示。
+- 方案：采用用户/GPT 自绘的紧凑背景图 textures/gui/swiss_knife_gui.png（176x145，来源 swiss_tools_final_unified/minecraft_gui_container.png），背景与槽位坐标统一设计。
+- SwissKnifeScreen：BACKGROUND 指向新图、imageHeight=145、inventoryLabelY=60、按钮 y=40。
+- SwissKnifeMenu：刀槽 y=17（不变）、背包 y=64/82/100、热栏 y=124。
+- tooltip 不显示根因：物品渲染在逻辑槽位坐标（与背景错位），鼠标悬停视觉格子不在逻辑槽位 → hoveredSlot null。坐标对齐后应恢复，待验证。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_205925.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 21:05
+- 修复 UI 仍错位（左上角对齐但只显示放大左上角）。
+- 根因：renderBg 的 blit 用 7 参数重载，默认把纹理当 256x256；新背景图是 176x145，被按 256 比例截取放大。
+- 修复：blit 显式传纹理尺寸（9 参数重载），尾参 176,145。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_210455.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 21:38
+- 采用 SophisticatedBackpacks 风格重绘瑞士刀 GUI（用户让 GPT 识图提取参数并绘制，来源 swiss_tools_final_unified/swiss_army_gui_container.png，176×168）。
+- 风格：灰色内凹容器风格——面板底(198,198,198)、黑边(0,0,0)、上/左白高光、下/右深灰阴影；槽位内凹（暗边 55,55,55、内部 139,139,139、右/下白高光）。
+- 布局（仿 SophisticatedBackpacks）：标题(7,5)；刀槽 5 个靠左 x=7+i*18（y=17）；模式开关凹槽条 y=39~55（按钮 y=40：自动 x=7 宽28，剑镐斧铲锄 x=38,56,74,92,110 宽18）；"物品栏"标签(7,73)；背包槽 x=7+col*18、y=85/103/121；热栏 y=143；imageHeight=168、inventoryLabelY=73。
+- SwissKnifeScreen：BACKGROUND 指向新图、imageHeight=168、inventoryLabelY=73、blit 纹理尺寸 176×168、按钮坐标更新。
+- SwissKnifeMenu：刀槽 x=7+i*18、背包 y=85/103/121、热栏 y=143、x=7+col*18。
+- 搜索/整理等按钮未实现（用户确认不需要）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_213805.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 21:45
+- 修复 GUI 物品相对背景格子偏右偏下各 1px：背景 blit 整体右下移 1px（renderBg 中 x+1, y+1），使背景格子/凹槽条/标题区与代码元素（物品/按钮/文字）全部对齐。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_214507.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 21:51
+- 修正背景偏移方向（用户反馈方向反了）：背景 blit 改为向左上移动 1px（x-1, y-1），对齐物品/按钮/文字。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_215050.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 22:02
+- 修正模式开关按钮与凹槽条对齐：背景左上移 1px 后，按钮同步左上移 1px（按钮 y 40→39，x 各 -1：自动 7→6、工具 38/56/74/92/110 → 37/55/73/91/109）。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_220149.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 22:30
+- 模式开关改为贴图渲染（用户让 GPT 绘制按钮图集 swiss_army_mode_buttons.png，162×27，复制为 swiss_knife_mode_buttons.png）。
+- 新布局：5 个工具锁定按钮在各刀槽正下方（y=37、宽18=1格、高9=半格、x=7,25,43,61,79），无文字，选中=绿底（贴图列3）；自动开关在其下方（y=50、宽54=3格、高18=1格、x=7），贴图内含 AUTO 文字，选中=绿底。
+- SwissKnifeScreen：MODE_BUTTONS 常量；ModeButton.renderWidget 改为 blit 图集按状态选区域（行1 工具 18×9 / 行2 自动 54×18，列 未选/悬停/选中）；移除文字渲染；addModeButton 增加高度与 y 参数。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_222940.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 22:36
+- 修复两个按钮问题：
+  1. 工具锁定按钮悬停/选中不显示：图集分析确认工具按钮 3 态也在 54px 列步进（x=0/54/108），原代码用 18px 列宽导致取错区域。修复 renderWidget 统一用列 u=0/54/108（工具行 v=0，自动行 v=9）。
+  2. 所有按钮左移 1px 对齐物品格子：自动 x=6、工具 x=6/24/42/60/78。
+- 构建成功：build\libs\generaltools-1.0.0.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_223601.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 23:10
+- 新增剪刀/打火石功能槽位（第 6/7 格，用户确认完整功能 + 模式贴图）。
+- 模式扩展：SwissKnifeMode 增加 SCISSORS(6)、FLINT_AND_STEEL(7)；canPerformAction 增加 scissors/shears 关键词 → SCISSORS 槽。
+- 剪羊毛：注册 PlayerInteractEvent.EntityInteract——剪刀模式右键未剪毛的羊时 cancel 事件 + withToolInHand 临时替换主手为剪刀 + mobInteract 剪毛（含写回）。仅锁定剪刀模式触发。
+- 打火石点火、剪刀方块操作由现有 useOn/挖掘委托自动覆盖；modeFor 不变（剪刀/打火石无 tag，自动模式不自动选中；树叶自动→HOE）。
+- SwissKnifeMenu：7 槽；mayPlace 加 ShearsItem/FlintAndSteelItem；SLOT_BACKGROUNDS 加剪刀/打火石剪影。
+- SwissKnifeScreen：工具锁定按钮 7 个（x=6,24,42,60,78,96,114，y=37）。
+- 模型 overrides 加 custom_model_data 6/7 → swiss_knife_scissors / swiss_knife_flint_and_steel。
+- 资源替换：新背景/按钮图、7 张空槽剪影（含剪刀/打火石）、7 张模式贴图（含剪刀/打火石）。
+- 语言/tooltip 加剪刀、打火石。
+- 构建：因 MCPRepo 联网超时改用 --offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_231016.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 23:23
+- 修复剪刀模式无法剪羊毛。
+- 根因：mapped 环境 Sheep.mobInteract 直接调 super（Forge 环境剪刀检查行为不确定），原依赖 withToolInHand + mobInteract 不可靠。
+- 修复：onEntityInteract 中改用直接调用 sheep.shear(SoundSource.PLAYERS)（原版剪毛核心：生成羊毛/音效/setSheared）+ 手动 hurtAndBreak 剪刀，绕开 mobInteract 的手持检查；条件仍为锁定剪刀模式 + 未剪毛羊 + 剪刀槽非空；加调试日志。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_232234.jar，新 jar 已复制到 mods 目录。
+
+2026-08-18 23:36
+- 剑攻击消耗剑槽工具耐久：hurtEnemy 中补剑伤害后，非创造模式下 sword.hurtAndBreak(1, attacker) + setSlotStack 写回；与挖掘等工具消耗对称。
+- 保护机制自动适用：剑耐久剩余 1 后 getSlotStack 返回空 → 攻击为空手，剑保留 1 耐久不损坏。
+- 左键挖掘保持现状（用户实测确认当前会正常掉工具耐久）。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260818_233514.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 18:03
+- 4 项改动（用户确认）：
+  1. 创造选项卡名称修复：EXAMPLE_TAB 加 .title(Component.translatable("itemGroup.generaltools.example_tab"))，显示"通用工具/General Tools"。
+  2. 手持模型武器化：8 个模型（swiss_knife + 7 模式）parent 从 minecraft:item/generated 改为 minecraft:item/handheld（手持斜握）。
+  3. 黑名单机制（config .toml）：Config 新增 blacklistedTools 配置项（List<String> 物品注册名，默认空），Forge 生成 config/generaltools-common.toml；SwissKnifeSlot.mayPlace 开头检查 Config.isBlacklisted(stack) 返回 false（所有槽位生效）。
+  4. tooltip 调查：SwissKnifeScreen 临时覆盖 renderTooltip 加节流日志（打印 hoveredSlot/hasItem/stack），待用户测试反馈定位"有物品槽位无 tooltip"。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_180305.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 19:07
+- 修复 tooltip 不显示：反编译确认 1.20.1 AbstractContainerScreen.render 不调用 renderTooltip（Screen.render/renderLabels 也不渲染）；参考 ColorTooltips（mixin GuiGraphics.renderTooltipInternal）确认 tooltip 经 GuiGraphics.renderTooltip 渲染。修复：SwissKnifeScreen 覆盖 render，super.render 后手动调用 renderTooltip。用户确认 GUI 内所有物品悬浮可正常显示提示框。
+- 修复锁定模式贴图不立即切换：setModeSetting 写入模式后，非自动模式立即调用 setMode（设置 CustomModelData）→ 点击锁定按钮即切换贴图（不依赖指向方块）；自动模式保持当前贴图。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_190637.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 19:23
+- 修改瑞士刀提示框文本：改为【当前已装备工具：】+ 各非空槽位工具名（每行一个）+【当前模式：X】；未装备任何工具时显示【空】。
+- 实现：appendHoverText 遍历 7 模式收集非空工具名（getSlotStack 非空），删除 buildSlotLine；语言文件 slots 键改为"当前已装备工具：/Currently equipped tools:"。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_192304.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 19:47
+- 瑞士刀提示框改为斜线装饰风格：
+  - 标题行「//////当前已装备\\\\\\」：斜线各 6 个只加粗，文字加粗+青色（语言键 title_text）。
+  - 工具名列表保持工具原名；未装备时【空】显示为红色。
+  - 分割线「\\\\\\===…===//////」：= 号动态补全，宽度≈标题行（Minecraft.getInstance().font 测量，服务端回退固定 8 个 =），整行加粗不加色。
+  - 模式行改为「模式：X」（语言键 mode 改为 模式：%s），加粗+青色。
+  - 实现：appendHoverText 重写 + buildDivider 方法；新增 TITLE_SLASH/TITLE_BSLASH 常量；import ChatFormatting、Minecraft、Font。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_194730.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 19:51
+- 修复分割线过长问题：buildDivider 填充 = 号后若总宽超出标题行宽度，则回退一个 =，使分割线宽度不超过标题行（之前多出约 3 个斜杠宽度）。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_195117.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 19:54
+- 继续修复分割线过长：改用 font.width(title.getString()) 以纯文本（非样式）宽度测量标题，避免 Component 样式测量导致宽度偏大（等号由 10 个明显减少）。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_195437.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:01
+- 分割线改全角字符方案：标题两侧斜线改全角「／／／／／／」「＼＼＼＼＼＼」，填充改全角等号「＝」（U+FF1D）。全 8px 与汉字同宽，「当前已装备」5 字与 5 个全角等号像素级对齐。
+- 改动：TITLE_SLASH/TITLE_BSLASH 常量改全角，buildDivider 填充字符及服务端回退（5 个全角等号）同步更新。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_200113.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:03
+- 斜杠换回半角：TITLE_SLASH/TITLE_BSLASH 改回半角 / 与 \（全角斜杠太宽观感不佳），填充保持全角等号「＝」不变。
+- 对齐验证（中文）：标题 = 6×6(/) + 40 + 6×6(\) = 112px；分割线 = 36 + 5×8(＝) + 36 = 112px，仍像素级对齐。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_200336.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:19
+- 代码精简优化（A+B）：
+  - V1.0 定版备份：旧版本\generaltools-1.0.0_V1.0.jar（复制自优化前部署版）。
+  - 删除 MDK 模板遗留：Config 的 logDirtBlock/magicNumber/magicNumberIntroduction/items 配置与字段；ExampleMod 的 commonSetup 日志、onServerStarting 方法及 register(this)、onClientSetup 日志。
+  - 删除调试日志：SwissKnifeScreen 的 renderTooltip 覆盖+lastTooltipLog；ModeSetPacket 的 received 日志；SwissKnifeItem 剪羊毛日志（连带 LOGGER 字段与 import 全部清除）。
+  - 清理未使用语言键：slots、sword、pickaxe、axe、shovel、hoe、scissors、flint_and_steel、slot_line（中英文各 9 个）。
+  - 说明：C 类优化（ResourceLocation 弃用、ordinal 统一、setSwissData 封装、modeNameKey 越界保护）暂未实施，构建仍有 5 处 ResourceLocation 弃用警告。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_201907.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:24
+- C 类优化 6 项全部实施：
+  1. 剪羊毛判定 SCISSORS.ordinal() 改为 SCISSORS.id（枚举一致性）。
+  2. ResourceLocation 弃用消除：ExampleMod 通道、SwissKnifeScreen 两处贴图改 fromNamespaceAndPath；Config 两处单参改 tryParse（含 null 防御）。构建弃用警告由 5 处降为 0。
+  3. applyToolEnchantments 两段重复「移除 Enchantments」合并为单一逻辑。
+  4. 新增 setSwissData 静态方法，setSlotStack/setModeSetting/SwissKnifeMenu.saveToNbt 三处 NBT 写回统一调用。
+  5. ClientEvents.onClientTick 重复 modeFor(state) 调用合并为一次。
+  6. modeNameKey 增加越界保护（非法模式回退显示"自动"），防止 NBT 篡改导致 tooltip 渲染崩溃。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_202430.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:33
+- 修复锁定模式 tooltip 显示原始 key 的问题：此前 B 清理误删了 modeNameKey 使用的 7 个模式名语言键（sword/pickaxe/axe/shovel/hoe/scissors/flint_and_steel），导致显示 "模式：tooltip.generaltools.swiss_knife.sword"。已在中英文语言文件中恢复这 7 个键。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_203333.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:49
+- 黑名单 tag 功能 + toml 默认文本 + 斜杠减半 + 自定义配置文件名（四项）：
+  1. Config.java 新增 blacklistedTags 配置（Set<TagKey<Item>>，onLoad 用 TagKey.create(Registries.ITEM,...) 解析），isBlacklisted 先查 ID 黑名单再遍历 tag 黑名单（ForgeRegistries.ITEMS.tags().getTag().contains()，含 null 防御）。
+  2. Config.java 的 blacklistedTools/blacklistedTags comment 改为多行中文说明，含占位符示例（<黑名单物品ID> / <黑名单tag>）与空注释行分隔。
+  3. SwissKnifeItem.java 斜杠减为左3右3（TITLE_SLASH→"///"、TITLE_BSLASH→3 反斜杠），对齐验证：标题 18+40+18=76px，分割线 36+5×＝+36=76px。
+  4. ExampleMod.java 配置文件名自定义为 generaltools_blacklist.toml（registerConfig 第三参）。
+  - 用户已删除旧 config/generaltools-common.toml，启动后将生成新文件名配置文件。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_204918.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 20:57
+- 新增模组内置黑名单 tag：generaltools:blacklist。
+  - 数据文件：data/generaltools/tags/items/blacklist.json（空 values，replace=false，供数据包/其他模组添加物品）。
+  - Config 新增常量 BLACKLIST_TAG（TagKey.create(Registries.ITEM, generaltools:blacklist)），isBlacklisted 最优先检查 stack.is(BLACKLIST_TAG)，带此 tag 的物品禁止放入瑞士刀工具槽。
+  - toml 默认文本：blacklistedTags 注释末尾追加「模组内置 Tag」说明段（generaltools:blacklist 的存在及作用）。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_205713.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 21:02
+- 调整 toml 默认文本结构：将「模组内置 Tag」说明段（generaltools:blacklist）移到文件顶部与 ID 禁用合并（blacklistedTools 注释前部），移除 blacklistedTags 注释中的该段。保持两个配置项结构，blacklistedTags = [] 现紧跟其 Tag 禁用说明，不再被内置 Tag 说明挤到末尾。无代码逻辑变更。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_210257.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 21:10
+- 新增瑞士刀合成配方：data/generaltools/recipes/swiss_knife.json（shaped）。
+  - 摆放（3×3）：空/铜锭/铁粒；铜锭/空/铜锭；铁锭/铜锭/空。
+  - 产物：generaltools:swiss_knife ×1。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_211040.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 21:14
+- 修复合成配方加载失败：游戏日志报 "Parsing error loading recipe generaltools:swiss_knife / Invalid pattern: too many columns, 3 is maximum"。
+- 原因：pattern 第一行误写为 " C n"（4 字符），应为 3 字符 " Cn"（空格、C、n）。
+- 已修正 pattern：[" Cn", "C C", "iC "]，布局 空/铜锭/铁粒、铜锭/空/铜锭、铁锭/铜锭/空。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_211416.jar，新 jar 已复制到 mods 目录。
+
+2026-08-19 21:15
+- 确认当前版本（generaltools-1.0.0.jar，含合成配方修复）为正式发布版：构建产物与部署 jar SHA256 一致（AFF0F202A5BCBEEE5F6CF16D209AF2BC8CA4E6A0F5E2AADA181A6B1C8DA2263B）。
+- 备份：将正式发布版复制为 旧版本\generaltools.jar。
+
+2026-08-19 21:30
+- 推送到 GitHub：
+  - 删除工作区根目录空仓库 .git（无提交历史，安全）。
+  - 在 General Tools 内 git init 独立仓库（分支 main），删除模板文件 README.txt、changelog.txt，.gitignore 新增忽略（旧版本/、开发日志.txt、AGENTS.md），新建 README.md（简介/特性/构建/配置/结构/许可）。
+  - 首次提交 aac2c2d（50 文件），推送至 https://github.com/2375120981/General-Tools.git（main 跟踪 origin/main）。
+
+2026-08-19 18:03
+- 4 项改动（用户确认）：
+  1. 创造选项卡名称修复：EXAMPLE_TAB 加 .title(Component.translatable("itemGroup.generaltools.example_tab"))，显示"通用工具/General Tools"。
+  2. 手持模型武器化：8 个模型（swiss_knife + 7 模式）parent 从 minecraft:item/generated 改为 minecraft:item/handheld（手持斜握）。
+  3. 黑名单机制（config .toml）：Config 新增 blacklistedTools 配置项（List<String> 物品注册名，默认空），Forge 生成 config/generaltools-server.toml；SwissKnifeSlot.mayPlace 开头检查 Config.isBlacklisted(stack) 返回 false（所有槽位生效）。
+  4. tooltip 调查：SwissKnifeScreen 临时覆盖 renderTooltip 加节流日志（打印 hoveredSlot/hasItem/stack），待用户测试反馈定位"有物品槽位无 tooltip"。
+- 构建：--offline 模式成功。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260819_180305.jar，新 jar 已复制到 mods 目录。
+
+2026-08-21 11:25
+- 修复经验修补（Mending）在瑞士刀上不可用：
+  - 根因：原版 Mending（ExperienceOrb.repairPlayerItems）只用 EnchantmentHelper.getRandomItemWith(MENDING, player, ...) 检测手持/装备物品自身 NBT；瑞士刀本身无耐久且槽位工具的 Mending 平时不体现在瑞士刀 NBT 上，故内部工具永不被修复。
+  - 修复：SwissKnifeItem 新增 @SubscribeEvent onXpChange(PlayerXpEvent.XpChange)，玩家获得经验时遍历瑞士刀 7 槽位工具，复刻原版公式（repair = min(amount × getXpRepairRatio(), damage)，消耗经验 repair/2）直接修复带 Mending 且耐久不满的工具，并用 event.setAmount 扣除经验。仅处理主手瑞士刀。
+  - 新增 import：Enchantments、PlayerXpEvent。
+- 1.20.1 版 mod 命名规范：build.gradle 改为 version="" + archivesName="generaltoolsV${mod_version}_1.20.1Forge"，产物统一命名 generaltoolsV1.0.0_1.20.1Forge.jar；manifest Implementation-Version 改用 mod_version。
+- 构建：--offline 模式成功，产物 build\libs\generaltoolsV1.0.0_1.20.1Forge.jar。
+- 部署：旧 jar 备份至 旧版本\generaltools-1.0.0_20260821_112507.jar，删除 mods 旧 generaltools-1.0.0.jar，部署新 generaltoolsV1.0.0_1.20.1Forge.jar 到 mods。
+
+2026-08-21 11:41
+- V1.2.0 定版：gradle.properties mod_version 改为 1.2.0，重新构建，产物 generaltoolsV1.2.0_1.20.1Forge.jar（含 Mending 修复）。
+- 备份：新 V1.2.0 定版复制至 旧版本\generaltoolsV1.2.0_1.20.1Forge.jar；mods 旧 V1.0.0 备份至 旧版本\generaltoolsV1.0.0_1.20.1Forge_20260821_114058.jar。
+- 部署：删除 mods 中 V1.0.0，部署 generaltoolsV1.2.0_1.20.1Forge.jar。
+
+2026-08-21 11:49
+- 版本号修正：用户确认此版应为 V1.1（非 V1.2.0）。gradle.properties mod_version 1.2.0 -> 1.1。
+- 重新构建产物 generaltoolsV1.1_1.20.1Forge.jar，V1.1 定版备份至 旧版本\generaltoolsV1.1_1.20.1Forge.jar；mods 旧 V1.2.0 备份至 旧版本\generaltoolsV1.2.0_1.20.1Forge_20260821_114856.jar（时间戳保留）。
+- 部署：mods 更新为 generaltoolsV1.1_1.20.1Forge.jar。
+- git 提交 d1815a5 "fix: 版本号修正为 V1.1"，已推送到 GitHub 1.20.1Forge 分支（c2e75be..d1815a5）。
+
+2026-08-21 19:41
+- V1.2 新增通用扳手槽（Wrench Slot）：
+  - 新增 WrenchConfig.java + 独立配置 generaltools_wrench.toml：wrenchMods（默认 mekanism/create/gtceu/ae2，装任一启用扳手槽）、wrenchItems（默认含 mekanism:configurator、create:wrench、gtceu:wrench、ae2:certus_quartz_wrench、ae2:nether_quartz_wrench）、wrenchTags（默认 c:wrenches、c:tools/wrench、forge:tools/wrenches）。
+  - SwissKnifeMode 新增 WRENCH(8)；getSlotStack/setSlotStack 在扳手槽未启用时隐藏（EMPTY/忽略写入）。
+  - SwissKnifeMenu：容器扩为 8 槽；启用时 addSlot 第 8 槽（末位 x=133,y=17，背景 empty_slot_wrench）；mayPlace case 7 用 WrenchConfig.isWrench；quickMoveStack/saveToNbt/加载循环适配 8 槽。
+  - SwissKnifeScreen：启用时 addModeButton(8)（x=132,y=18）；renderBg 按 isWrenchSlotEnabled 切换 swiss_knife_gui.png / swiss_knife_gui_wrench.png 双背景。
+  - 资源：新增模型 swiss_knife_wrench.json（handheld）、swiss_knife.json overrides 加 custom_model_data 8；贴图 swiss_knife_wrench.png（wrench_knife_16x16_v5.png）、empty_slot_wrench.png（wrench_outline_16x16_v2.png）、swiss_knife_gui_wrench.png（用户提供）；语言键 wrench（扳手/Wrench）。
+  - 生效逻辑：锁定模式=8 委托扳手槽工具 useOn，各 mod 扳手交叉兼容行为自动继承。
+  - 版本升级 mod_version=1.2，产物 generaltoolsV1.2_1.20.1Forge.jar。
+- 构建：--offline 模式成功。
+- 部署：mods 旧 V1.1 备份至 旧版本\generaltoolsV1.1_1.20.1Forge_20260821_194044.jar，部署 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 21:05
+- V1.2 扳手功能改造：删除扳手槽，改为内置通用扳手（无槽位）。
+  - 触发规则：锁定扳手模式=普通右键旋转/潜行右键拆除（禁用其他模式）；非锁定模式=潜行右键优先拆除，拆除不生效托管当前工具；普通右键=工具功能。
+  - wrenchRotate：复刻 GT 扳手通用旋转（排除 BaseRailBlock；state.rotate 用 CLOCKWISE_90/COUNTERCLOCKWISE_90，有变化则 setBlock 应用+音效）。
+  - wrenchDismantle：精密拆除（getCloneItemStack 保留 NBT、removeBlock 无掉落、吸入物品栏、背包满 popResource 掉落）。
+  - 拆除判定：带 BE（排除箱子 minecraft:chests tag）或红石元件（RAILS/BUTTONS/PRESSURE_PLATES tag、RedStoneWireBlock 红石粉、RedstoneTorchBlock、DiodeBlock、RedstoneLampBlock、红石块 Blocks.REDSTONE_BLOCK、PistonBaseBlock）。
+  - 删除 getSlotStack/setSlotStack 的 WRENCH 特判。
+  - UI：扳手按钮常态显示，18×18 正方形与 AUTO 同行（addModeButton(8,66,18,18,50)），独立图集 swiss_knife_wrench_button.png（54×18 三帧，renderWidget mode==8 专用）。
+  - 删除 WrenchConfig.java 及 ExampleMod 配置注册（generaltools_wrench.toml 不再生成）。
+  - 删除资源：empty_slot_wrench.png、swiss_knife_gui_wrench.png（恢复单一背景）；保留 swiss_knife_wrench.png 与语言键 wrench。
+  - 修正：PistonBaseBlock 在 piston 子包；1.20.1 无 RedstoneBlock 类（用 Blocks.REDSTONE_BLOCK）；BlockTags.CHESTS 无常量（自定义 minecraft:chests tag）；UI_BUTTON_CLICK 为 Holder 需 .value()。
+  - 版本保持 V1.2。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_210527.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 21:30
+- 修复：扳手模式对方块潜行右键会打开 GUI。
+  - 根因：wrenchDismantle 对不可拆方块返回 PASS，原版 useOn 流程回退调用 use()（对空气右键逻辑），潜行时打开 GUI。
+  - 修复：锁定扳手模式潜行右键时，拆除不生效返回 InteractionResult.FAIL（消费右键，阻止回退开 GUI）；拆除生效返回 SUCCESS。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_213005.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 21:45
+- 修复两个扳手问题：
+  - 箱子仍可拆除：minecraft:chests tag 判定不可靠，改用 instanceof ChestBlock/EnderChestBlock 排除（普通箱/陷阱箱继承 ChestBlock，末影箱单独判断），删除 CHESTS_TAG 及 Registries/TagKey/ResourceLocation import。
+  - 旋转方向：改为围绕点击面法线旋转（Create 扳手风格）——FACING/HORIZONTAL_FACING 朝向用 f.getClockWise(side.getAxis())（绕点击面轴顺时针 90°）；AXIS 方块轴设为点击面轴。修正：1.20.1 Rotation 无 rotate(Axis) 方法，轴向改用 side.getAxis()。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_214500.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:00
+- 三项调整：
+  - 木桶不可拆：isDismantleable 排除 BarrelBlock（箱子/木桶/末影箱均不可拆）。
+  - Pipez 兼容：研读 Pipez 1.20.1 源码（WrenchItem.isWrench = stack.is(forge:wrenches) || stack.is(forge:tools/wrench)；onPipeSideForceActivated 中命中则执行 onWrenchClicked 潜行右键断开/提取切换）。为瑞士刀添加 data/forge/tags/items/wrenches.json 与 tools/wrench.json（values 含 generaltools:swiss_knife），使 Pipez 等按 tag 识别扳手的模组把瑞士刀当扳手处理。
+  - 拆除改为普通拆除：wrenchDismantle 改用 Block.getDrops（等效普通破坏掉落、不保留 NBT），removeBlock 后掉落物吸入物品栏（背包满 popResource 掉落）。
+- 构建：--offline 模式成功，jar 内含两个 forge wrench tag 文件。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_220000.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:10
+- 区分存储与机器：扩展不可拆的存储容器黑名单（箱子/木桶/末影箱/潜影盒/漏斗/发射器[含投掷器，DropperBlock 继承 DispenserBlock]）；其余带 BE 方块视为机器可拆（熔炉/GT/Mek/Create 机器）。
+  - 说明：capability ITEM_HANDLER 无法区分存储与机器（机器也有物品槽），故用 vanilla 存储容器类黑名单；mod 存储方块可后续按需补充。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_221000.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:15
+- 回滚"扩展存储容器黑名单"改动（潜影盒/漏斗/发射器/投掷器不可拆）：isDismantleable 排除恢复为仅箱子/木桶/末影箱，删除相关 import（ShulkerBoxBlock/HopperBlock/DispenserBlock）。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_221500.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:30
+- 红石判定改造：isDismantleable 红石元件判定改为 state.isSignalSource()（通用信号源，覆盖红石块/火把/中继器/比较器/红石线/按钮/压力板/拉杆及 mod 信号源）+ RAILS tag（轨道）+ RedstoneLampBlock/PistonBaseBlock（接受端）。
+  - 移除被覆盖的判定：BUTTONS/PRESSURE_PLATES tag、RedStoneWireBlock/RedstoneTorchBlock/DiodeBlock instanceof、Blocks.REDSTONE_BLOCK（经 javap 确认 ButtonBlock/BasePressurePlateBlock.isSignalSource 覆写为 true，可被覆盖）。
+  - 不使用 forge:mineable/wrench tag。
+  - import 调整：移除 Blocks/RedStoneWireBlock/RedstoneTorchBlock/DiodeBlock。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_223000.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:40
+- 拆除保护改为"掉落物保护"：移除箱子/木桶/末影箱硬排除，改为拆除时统计掉落物堆数（Block.getDrops 堆数 + 容器 ITEM_HANDLER capability 非空槽数），>= 阈值（默认 5，可配置 dismantleDropThreshold，设 0 关闭）则拦截拆除，播放 note_block.pling 音效并发送聊天提示"内容物过多，无法拆除"（message.generaltools.swiss_knife.dismantle_blocked）。
+  - 容器内容物统计用 BlockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null)（1.20.1 Level 无 getCapability）；音效用 level.playSound（Entity.playSound 无 SoundSource 重载）。
+  - Config 新增 dismantleDropThreshold（generaltools_blacklist.toml，默认 5）。
+  - 效果：空容器/机器（少掉落）可拆，内容物多（>=5 堆）拦截+提示+音效。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_224000.jar，部署新 generaltoolsV1.2_1.20.1Forge.jar。
+
+2026-08-21 22:54
+- V1.3 定版 + 代码简化与清理：
+  - 简化：新增 activeTool(knife,state) 辅助方法（解析生效模式并应用 setMode+附魔继承），消除 getDestroySpeed/mineBlock/useOn 工具分支的重复骨架；applyToolEnchantments 缓存 getOrCreateTag；wrenchDismantle 容器内容物统计封装为 countContainerContents(BlockEntity)。
+  - 清理：删除未使用语言键 gui.generaltools.swiss_knife_hint（中英）；修正过时注释（useOn 描述、tooltip 斜杠 6→3）；更新 AGENTS.md 项目结构（删除已不存在的 swiss_knife_sword/example_block/example_item 描述）。
+  - 版本：gradle.properties mod_version=1.3，产物 generaltoolsV1.3_1.20.1Forge.jar。
+- 构建：--offline 模式成功。
+- 部署：当前 V1.2 备份至 旧版本\generaltoolsV1.2_1.20.1Forge_20260821_225320.jar，部署 generaltoolsV1.3_1.20.1Forge.jar。
+
+2026-08-21 23:05
+- 经验修补排查：用户报告失效，经排查 onXpChange 逻辑未变、V1.3 优化未涉及（Player.giveExperiencePoints 经字节码确认无条件触发 PlayerXpEvent$XpChange）。
+  - 临时加入日志版验证：加日志后用户测试正常，判断为之前测试场景问题（工具满耐久时 isDamaged=false 不修复属正常行为）。
+  - 已移除临时日志（onXpChange 恢复简洁版，删除 LOGGER/LogUtils/Logger import），重新构建部署正式 V1.3。
+- 构建：--offline 模式成功。
+- 部署：日志版 V1.3 备份至 旧版本\generaltoolsV1.3_1.20.1Forge_20260821_230500.jar，部署正式 generaltoolsV1.3_1.20.1Forge.jar。
+
+2026-08-22 21:34
+- V1.4 改造：完全复刻 AE2 扳手（验证可行性）：
+  - 移除瑞士刀内置通用扳手：删除 wrenchRotate/wrenchDismantle/isDismantleable/countContainerContents 方法；useOn 中 WRENCH 模式不再自行旋转/拆除，改为直接返回 FAIL（AE2 方块由 AE2 WrenchHook 通过 wrench tag 接管旋转/拆除，非 AE2 方块无效果）；移除非锁定模式的潜行拆除分支。
+  - 清理 import：Direction/SoundEvents/ServerLevel/BaseRailBlock/Block/RedstoneLampBlock/PistonBaseBlock/BlockEntity/BlockStateProperties/ForgeCapabilities/LazyOptional/IItemHandler。
+  - Config 移除 dismantleDropThreshold 配置（掉落物保护随内置拆除一并废弃）；语言文件删除 message.generaltools.swiss_knife.dismantle_blocked。
+  - 新增 c:tools/wrench + c:wrenches 通用 tag（values 含 swiss_knife），保留 forge:tools/wrench + forge:wrenches。
+  - 版本：gradle.properties mod_version=1.4，产物 generaltoolsV1.4_1.20.1Forge.jar。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.3 备份至 旧版本\generaltoolsV1.3_1.20.1Forge_20260822_213352.jar，部署 generaltoolsV1.4_1.20.1Forge.jar。
+
+2026-08-22 22:41
+- 修复：锁定扳手模式贴图 bug（版本号保持 1.4）：
+  - 现象：锁定扳手模式时挖方块后贴图变为基础刀身（CustomModelData=0），且之后一直显示该贴图（不回扳手）。
+  - 根因：activeTool 空槽分支无条件 setMode(NONE)；扳手模式无工具槽（内置能力），getSlotStack(WRENCH) 恒为空 → 每次 getDestroySpeed/mineBlock 触发都复位 NONE；ClientEvents 仅在自动模式切换贴图、setModeSetting 仅在 GUI 操作调用，故卡在 NONE 不恢复。
+  - 修复：activeTool 空槽分支对 WRENCH 保持 setMode(WRENCH)（扳手贴图），其余模式仍复位 NONE；附魔清理仍用 NONE（扳手模式不继承工具附魔）。
+- 构建：--offline 模式成功。
+- 部署：旧 V1.4 备份至 旧版本\generaltoolsV1.4_1.20.1Forge_20260822_224138.jar，部署修复版 generaltoolsV1.4_1.20.1Forge.jar。
+
+2026-08-23 17:14
+- 版本更新：General Tools 1.20.1 Forge 由 V1.4 更新为 V1.5，产物名称更新为 generaltoolsV1.5_1.20.1Forge.jar。
+- 修复挖掘状态写回：内部镐、斧、锹、锄完成 mineBlock 后，将耐久、能量及自定义数据重新保存到瑞士刀槽位。
+- 重构剑继承：移除固定 -2.4 攻速和手动追加剑伤害，改用 Forge ItemAttributeModifierEvent 继承内部剑的完整有效属性，并在攻击前同步附魔、命中时委托内部剑 hurtEnemy 后写回状态。
+- 修复经验修补：新增 getStoredSlotStack 读取受保护的真实工具，剩余 1 点耐久仍可修复；按工具修复比例向上取整扣除经验，避免修复 1 点耐久不消耗经验。
+- 修复右键与剪刀代理：按实际主手/副手临时替换内部工具；创造模式剪羊毛不再消耗内部剪刀耐久。
+- 调整附魔继承：经验修补不再复制到无耐久的瑞士刀本体，继续由经验事件直接修复槽内工具；取消在属性查询过程中修改附魔 NBT。
+- 构建：执行 gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 17s。
+- 构建产物：build/libs/generaltoolsV1.5_1.20.1Forge.jar；本次未部署到启动器 mods 目录。
+- 1.21.1Neoforge 工作区保持未修改。
+
+2026-08-23 17:34
+- 剪刀实体兼容：剪刀模式右键任意生物时，先在实际交互手中调用内部剪刀的 interactLivingEntity；内部工具返回成功时保留其效果与状态，返回 PASS 且目标为未剪毛的羊时继续使用原版剪羊毛兜底。
+- 菜单有效性：SwissKnifeMenu 记录打开菜单的玩家和瑞士刀对象；玩家死亡、丢弃瑞士刀或原对象不再位于主手、副手及背包时关闭菜单，保存前再次校验，避免写入失效 ItemStack 引用。
+- 耐久事务保护：右键、实体交互、挖掘及攻击前保存标准耐久工具副本；若单次操作使工具损坏，则恢复为剩余 1 点耐久；工具转换成其它非空物品时保留模组转换结果。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 14s；本次未部署、未推送，等待游戏内测试。
+
+2026-08-24 21:52
+- 开源协议：General Tools 由 All Rights Reserved 改为 MIT License，版权声明为 Copyright (c) 2026 c09nat。
+- 发布元数据：gradle.properties 的 mod_license 更新为 MIT，README 增加许可证说明。
+- 许可证随包分发：构建脚本将 LICENSE 写入 JAR 的 META-INF/LICENSE_generaltools.txt。
+- 第三方声明：原 Forge LGPL 2.1 文本移至 THIRD_PARTY_LICENSES/MinecraftForge-LGPL-2.1.txt，避免与模组主许可证混淆。
+- 构建：执行 gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 13s。
+- 验证：generaltoolsV1.5.1_1.20.1Forge.jar 元数据声明 license="MIT"，并包含正确的 MIT 许可证及版权声明。
+- 部署：本次未部署到启动器 mods 目录。
+
+2026-08-24 22:14
+- 最终发布版本：General Tools 1.20.1 Forge 由 V1.5.1 更新为 V1.5.2。
+- 版本配置：gradle.properties 的 mod_version 更新为 1.5.2，README 同步更新构建产物名称。
+- 构建：执行 gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 14s。
+- 验证：generaltoolsV1.5.2_1.20.1Forge.jar 内部版本为 1.5.2、许可证为 MIT，并包含 META-INF/LICENSE_generaltools.txt。
+- 发布文件：已复制到项目总目录；本次未部署到启动器 mods 目录。
+2026-08-29
+- 统一外观与有效模式：getEffectiveMode 解析最终可用工具模式后立即同步 CustomModelData，客户端目视切换也复用同一解析入口。
+- 空槽或受保护的不可用工具统一回退 NONE，避免仅显示工具贴图但实际未委托槽内工具。
+- 蜘蛛网明确识别为剑模式，使自动模式委托槽内剑的破坏速度和回调。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（Jade 式工具识别）
+- 自动模式改为逐一测试槽内真实工具，通过 isCorrectToolForDrops 或相对空手更高的 getDestroySpeed 判断工具是否适合目标方块。
+- 多个工具同时有效时按剪刀、剑、镐、斧、铲、锄排序；蜘蛛网同时支持剪刀和剑时优先剪刀，缺少剪刀时回退剑。
+- 保留原版 mineable_with_* 与蜘蛛网规则作为无候选命中时的类型兜底；不添加 Jade 运行依赖。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（自动模式倒序匹配）
+- 多工具候选改为按槽位倒序匹配：剪刀、锄、铲、斧、镐、剑；打火石不参与挖掘匹配。
+- 蜘蛛网同时支持剑和剪刀时优先选择靠后的剪刀槽。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（移除蜘蛛网硬编码）
+- 删除 Blocks.COBWEB 到剑模式的专用分支及无用导入；蜘蛛网现完全由槽内真实工具的正确采集/破坏速度测试和倒序优先级识别。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（发布 V1.5.3）
+- 版本号由 1.5.2 更新为 1.5.3，README 同步更新构建产物名称。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；产物 generaltoolsV1.5.3_1.20.1Forge.jar。
+- 准备提交并推送至 GitHub 分支 1.20.1Forge。
+2026-08-29（模式轮盘）
+- 新增默认 G 键的可配置模式轮盘快捷键；长按 200ms 打开、不暂停游戏，松开确认，Esc/死亡/离开主手/切换界面取消。
+- 轮盘以打开瞬间鼠标位置为中心，中心 25px 选择自动模式；固定锚点为 12点剑、2点镐、3点斧、4点打火石、6点扳手、8点剪刀、9点锄、10点铲，并按最近方向选区。
+- 空槽模式灰显且不可确认，扳手始终可选；确认复用 ModeSetPacket，仅发送一次。
+- 修复 zh_cn.json 历史编码/JSON 损坏并增加轮盘与快捷键翻译。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（测试部署）
+- 旧 generaltoolsV1.5.2_1.20.1Forge.jar 已备份至项目旧版本目录并从测试实例 mods 移除。
+- 已部署 generaltoolsV1.5.3_1.20.1Forge.jar 至启动器 1.20.1-Forge_47.4.22/mods，供游戏内测试。
+2026-08-29（修复轮盘闪烁）
+- 原因：打开 Screen 时 Minecraft 清空 KeyMapping 按下状态，tick 误判 G 已松开并关闭；键盘重复事件又重新打开，形成持续闪烁。
+- 修复：轮盘改为监听真实 keyReleased 事件确认，不再在 Screen tick 中轮询 KeyMapping.isDown；死亡和主手变更取消逻辑保留。
+- 构建成功；已备份测试实例中的轮盘初版 1.5.3，并部署修复版至 1.20.1 Forge 测试实例。
+2026-08-29（轮盘居中与等分）
+- 轮盘中心固定为 GUI 缩放后的屏幕中心，移除打开瞬间鼠标坐标作为中心的逻辑，解决巨大位置偏移。
+- 8 个模式选择区域严格按 45° 等分；顺时针为剑、镐、斧、打火石、扳手、剪刀、锄、铲。
+- 构建成功，已备份上一测试 JAR并部署新构建至 Forge 测试实例。
+2026-08-29（真实圆弧轮盘）
+- 轮盘由大量正方形采样改为 POSITION_COLOR 三角形网格，绘制连续的环形扇区与实心圆形自动区域。
+- 扳手锚点改为直接绘制 generaltools:item/swiss_knife_wrench 对应的瑞士刀扳手模式贴图。
+- 构建成功，已备份方块采样轮盘 JAR并部署至 Forge 测试实例。
+2026-08-29（修复圆弧轮盘颜色缺失）
+- 原因：GUI 全屏遮罩与自定义扇形位于同一深度，深度测试丢弃后绘制的扇形顶点。
+- 修复：绘制扇形期间关闭深度测试与深度写入、重置着色器颜色，完成后恢复渲染状态。
+- 构建成功，已备份无颜色版本并部署至 Forge 测试实例。
+2026-08-29（第二次修复圆弧不可见）
+- 深度状态修复实测无效；进一步定位为 GUI Y 轴方向导致三角形绕序被背面剔除，同时即时绘制与 GuiGraphics 批次可能顺序冲突。
+- 绘制扇形期间关闭面剔除，并在自定义顶点绘制前后调用 GuiGraphics.flush；构建成功并部署 Forge 测试实例。
+2026-08-29（轮盘触发延迟）
+- 模式轮盘快捷键长按阈值由 200ms 缩短为 50ms；构建成功并部署 Forge 测试实例，旧 JAR 已备份。
+2026-08-29（AUTO 文本）
+- 轮盘中心自动模式文字由本地化“自动”改为固定“AUTO”，与物品 GUI 的自动按钮一致；构建并部署 Forge 测试实例。
+
+2026-09-25（发布 V1.5.4 / 打火石方块交互代理）
+- 版本号由 1.5.3 更新为 1.5.4，README 同步更新构建产物名称。
+- 修复瑞士刀打火石模式无法点燃 TNT：原实现仅在方块完成手持物检查后代理槽内打火石的 Item.useOn，TNT 检查时看到的仍是瑞士刀。
+- 新增 RightClickBlock 早期方块交互代理：打火石模式下临时将实际交互手替换为槽内真实打火石，再调用目标方块的 use，使原版 TNT 及采用相同手持物检查机制的模组方块能够识别打火石。
+- 方块消费或拒绝交互时取消后续瑞士刀交互，避免重复执行；方块返回 PASS 时保留原有 Item.useOn 委托作为放火、营火和蜡烛等行为的兜底。
+- 代理结束后恢复瑞士刀，并将槽内工具的耐久、充能及其它状态变化写回。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 36s；产物 build/libs/generaltoolsV1.5.4_1.20.1Forge.jar，大小 59522 字节；本次未部署，尚待游戏内验证。

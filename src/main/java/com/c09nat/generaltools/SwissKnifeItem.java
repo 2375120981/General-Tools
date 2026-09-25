@@ -160,6 +160,45 @@ public class SwissKnifeItem extends Item
         }
     }
 
+    /**
+     * 方块会先于物品的 useOn 检查玩家手中的物品。打火石模式必须在这一阶段就让方块看到
+     * 槽内的真实打火石，否则 TNT 以及采用相同实现方式的模组方块只会看到瑞士刀。
+     */
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event)
+    {
+        Player player = event.getEntity();
+        InteractionHand hand = event.getHand();
+        ItemStack knife = player.getItemInHand(hand);
+        if (!(knife.getItem() instanceof SwissKnifeItem))
+        {
+            return;
+        }
+
+        Level level = event.getLevel();
+        BlockState state = level.getBlockState(event.getPos());
+        if (getEffectiveMode(knife, state) != SwissKnifeMode.FLINT_AND_STEEL)
+        {
+            return;
+        }
+
+        ItemStack flintAndSteel = getSlotStack(knife, SwissKnifeMode.FLINT_AND_STEEL);
+        if (flintAndSteel.isEmpty())
+        {
+            return;
+        }
+
+        InteractionResult result = withToolInHand(player, hand, flintAndSteel,
+                () -> state.use(level, player, hand, event.getHitVec()),
+                knife, SwissKnifeMode.FLINT_AND_STEEL);
+
+        if (result.consumesAction() || result == InteractionResult.FAIL)
+        {
+            event.setCanceled(true);
+            event.setCancellationResult(result);
+        }
+    }
+
     /** 标准耐久工具若在一次代理操作中损坏，则恢复为剩余 1 点耐久。 */
     private static ItemStack protectDurability(ItemStack before, ItemStack after)
     {
