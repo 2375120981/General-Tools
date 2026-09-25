@@ -1,0 +1,171 @@
+General Tools 1.21.1 NeoForge 开发日志
+======================================
+
+2026-08-23 09:09
+- 初始化项目：目标目录 1.21.1Neoforge 原为空目录，下载并采用 NeoForge 官方 1.21.1 ModDevGradle MDK 建立开发环境。
+- 开发环境：Minecraft 1.21.1、NeoForge 21.1.216、ModDevGradle 2.0.144、Gradle 9.2.1、Java 21。
+- 项目元数据：mod_id=generaltools、mod_name=General Tools、mod_version=1.4、mod_group_id=com.example.generaltools。
+- 构建产物命名统一为 generaltoolsV1.4_1.21.1NeoForge.jar。
+- Gradle 配置关闭常驻 Daemon 与配置缓存，插件解析增加阿里云 Gradle 插件镜像，并保留官方插件源作为回退。
+- 仅在 1.21.1Neoforge 目录开展移植；1.20.1Forge 目录保持未修改状态。
+
+2026-08-23 09:25
+- 从 1.20.1 Forge 版本迁移 General Tools V1.4 的 Java 源码、语言、模型、贴图、GUI、配方和物品标签资源。
+- 注册系统迁移：Forge DeferredRegister/RegistryObject 改为 NeoForge DeferredRegister/DeferredHolder；物品、菜单和创造模式标签均在 NeoForge 模组事件总线上注册。
+- 配置系统迁移：ForgeConfigSpec 改为 NeoForge ModConfigSpec；保留 config/generaltools_blacklist.toml、物品 ID 黑名单、物品 Tag 黑名单和内置 generaltools:blacklist 标签。
+- 事件系统迁移：Forge 事件、客户端 Tick 和玩家交互事件切换为 NeoForge 对应 API。
+- Java 目标版本由 Java 17 升级为 Java 21。
+
+2026-08-23 09:35
+- 物品持久化迁移：移除 1.20.1 的 ItemStack 根 NBT 直接读写方式。
+- 瑞士刀 7 个工具槽改用 minecraft:container（DataComponents.CONTAINER / ItemContainerContents）数据组件保存。
+- 自动/锁定模式改用 minecraft:custom_data 保存；当前贴图模式改用 minecraft:custom_model_data 保存。
+- 槽内工具数据由 ItemContainerContents 自动携带，继续保留剩余耐久 <= 1 时禁用工具、避免工具损坏的保护逻辑。
+- 当前槽位工具的附魔数据通过 minecraft:enchantments 数据组件同步到瑞士刀。
+- 保留自动模式、剑/镐/斧/铲/锄/剪刀/打火石锁定模式、工具挖掘与右键委托、剑攻击委托、剪羊毛和 tooltip 展示。
+- 保留扳手模式与 forge/c 通用 wrench 标签，使其它模组可将瑞士刀识别为扳手。
+
+2026-08-23 09:42
+- 网络同步迁移：删除旧 Forge SimpleChannel、NetworkRegistry 和 ModeSetPacket。
+- GUI 模式按钮改用原版 AbstractContainerMenu.clickMenuButton / handleInventoryButtonClick 通道同步，无需自定义网络包。
+- SwissKnifeMenu 加载和保存逻辑改为直接读写瑞士刀数据组件。
+- 资源格式迁移：1.21 数据包目录由 recipes 改为 recipe、tags/items 改为 tags/item。
+- 合成配方 1.21 格式适配：result.item 改为 result.id。
+- 新增 pack.mcmeta，pack_format=34。
+- 清理官方 MDK 遗留的 Example Mod 示例语言资源。
+- 新建 README.md，记录环境版本、构建命令、产物位置及主要迁移变化。
+
+2026-08-23 09:55
+- 第一次实际 compileJava 已进入 Minecraft 产物生成与 Java 编译阶段，说明 Gradle、Java、NeoForge 和 Minecraft 开发依赖配置正常。
+- 首次编译失败：NeoForge 1.21.1 中 MenuScreens.register 为私有方法，旧式客户端初始化注册方式无法访问。
+- 同时发现 EventBusSubscriber.bus / EventBusSubscriber.Bus 参数已弃用警告。
+
+2026-08-23 10:00
+- 修复客户端界面注册：改用 NeoForge RegisterMenuScreensEvent，并通过 event.register 注册 SwissKnifeScreen。
+- 移除 Config 和 ExampleModClient 中已弃用的 EventBusSubscriber.bus 参数。
+- 用户重新执行 gradlew.bat build --console=plain，Java 编译、资源处理、JAR 打包、assemble、check 和 build 全部完成。
+
+2026-08-23 10:04
+- 构建成功：BUILD SUCCESSFUL in 9s。
+- 构建产物：build/libs/generaltoolsV1.4_1.21.1NeoForge.jar。
+- 产物大小：45060 字节。
+- 当前尚未记录游戏内启动与功能实测，也未执行启动器 mods 目录部署；后续应测试 GUI、工具槽保存、各工具委托、模式贴图、剪羊毛、黑名单和跨模组 wrench 兼容。
+
+2026-08-23 10:15
+- 修复 1.21.1 版瑞士刀内部工具经验修补不生效：新增 PlayerXpEvent.XpChange 监听，玩家获得经验时遍历主手瑞士刀的 7 个真实槽位，按 1.21.1 原版 Mending 公式修复带经验修补且耐久未满的工具，并从本次经验中扣除已消耗部分。
+- 新增 getStoredSlotStack：经验修补直接读取槽位原始工具，工具即使只剩 1 点耐久、已被功能保护判定为不可用，也仍可被经验修补恢复；普通使用仍通过 getSlotStack 保持剩余 1 耐久保护。
+- 调整附魔继承边界：瑞士刀本体只继承与挖掘/破坏相关的效率、精准采集、时运、耐久；经验修补不复制到瑞士刀本体，而由上述事件单独处理；其它持续性或无关附魔不再复制。
+- 精准采集、时运等现有方块掉落继承路径保持不变。
+- 构建验证：Codex 沙箱账户缺少 Gradle 插件解析缓存且网络受限，未能在沙箱内运行 compileJava；需要由用户本机 CMD 重新执行 gradlew.bat build --console=plain 验证。
+
+2026-08-23 10:20
+- 模组附魔自动兼容：移除仅允许效率/精准采集/时运/耐久四项原版附魔的固定白名单。
+- 新规则直接读取 1.21.1 数据驱动附魔的效果组件：槽内工具已有的所有非持续型附魔均可继承，因此模组提供的挖掘效率、方块掉落、耐久、击中方块等工具附魔无需逐个写死注册名即可兼容。
+- 持续性过滤：带 EnchantmentEffectComponents.TICK 或 LOCATION_CHANGED 的附魔不复制到瑞士刀，避免持续 tick、移动或位置变化效果把瑞士刀当作真实装备执行。
+- 经验修补保留：Mending 仍不复制到无耐久的瑞士刀本体，但继续由 PlayerXpEvent.XpChange 单独修复槽内真实工具并消耗经验。
+- 原版精准采集、时运、效率和耐久属于非持续型效果，继续正常继承。
+- 构建验证仍需由用户本机 CMD 执行 gradlew.bat build --console=plain。
+
+2026-08-23 15:43
+- 分析根目录错误报告“错误报告-2026-8-23_15.37.15.zip”：整合包使用 NeoForge 21.1.215，模组因元数据要求 NeoForge 21.1.216 及以上而在加载阶段被拒绝；不是代码执行崩溃。
+- 根因：官方 MDK 模板直接用开发依赖 neo_version 生成发布 JAR 的最低运行版本，导致编译用补丁版本被错误地变成硬性运行要求。
+- 版本依赖解耦：保留 neo_version=21.1.216 作为开发/编译版本；新增 neo_version_range=[21.1.0,)，作为发布 JAR 的运行兼容范围。
+- build.gradle 的 generateModMetadata 增加 neo_version_range 展开项；neoforge.mods.toml 改用 versionRange="${neo_version_range}"。
+- 结果：重新构建后的 JAR 可在 NeoForge 21.1.0 及以上运行，包括错误报告中的 21.1.215；以后升级开发用补丁版本也不会自动提高玩家端最低要求。
+- README 已补充开发版本与运行依赖范围的区别。
+- 1.20.1Forge 工作区保持未修改。
+- 需要重新执行 gradlew.bat build --console=plain 生成带新元数据的 JAR；旧 JAR 的依赖声明不会自动改变。
+
+2026-08-23 17:00
+- 修复剩余 1 点耐久工具的菜单保存问题：SwissKnifeMenu 改为通过 getStoredSlotStack 读取真实槽位内容，避免 getSlotStack 的不可用保护将工具显示为空并在保存时误删。
+- 工具正常使用仍继续通过 getSlotStack 保留剩余 1 点耐久保护；菜单管理与经验修补可以读取并恢复真实工具。
+- 模组版本由 V1.4 更新为 V1.5，构建产物名称更新为 generaltoolsV1.5_1.21.1NeoForge.jar。
+- 剪羊毛逻辑同步采用 1.20.1 的临时工具代理思路：交互期间把实际使用手替换为槽内剪刀，完成剪羊毛和耐久处理后恢复瑞士刀并写回剪刀状态。
+- 代理逻辑补充主手/副手区分，并保留创造模式不消耗耐久，避免照搬 1.20.1 时引入创造模式扣耐久和副手代理错误。
+
+2026-08-23 17:34
+- 剪刀实体兼容：剪刀模式右键任意生物时，先在实际交互手中调用内部剪刀的 interactLivingEntity；内部工具返回成功时保留其效果与状态，返回 PASS 且目标为未剪毛的羊时继续使用原版剪羊毛兜底。
+- 菜单有效性：SwissKnifeMenu 记录打开菜单的玩家和瑞士刀对象；玩家死亡、丢弃瑞士刀或原对象不再位于主手、副手及背包时关闭菜单，保存前再次校验，避免写入失效 ItemStack 引用。
+- 耐久事务保护：右键、实体交互、挖掘、攻击前置及攻击后置回调前保存标准耐久工具副本；若单次操作使工具损坏，则恢复为剩余 1 点耐久；工具转换成其它非空物品时保留模组转换结果。
+- 构建：gradlew.bat build --console=plain，BUILD SUCCESSFUL in 8s；本次未部署、未推送，等待游戏内测试。
+
+2026-08-24 21:52
+- 开源协议：General Tools 由 All Rights Reserved 改为 MIT License，版权声明为 Copyright (c) 2026 c09nat。
+- 发布元数据：gradle.properties 的 mod_license 更新为 MIT，README 增加许可证说明。
+- 许可证随包分发：构建脚本将 LICENSE 写入 JAR 的 META-INF/LICENSE_generaltools.txt。
+- 构建：执行 gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 8s。
+- 验证：generaltoolsV1.5.1_1.21.1NeoForge.jar 元数据声明 license="MIT"，并包含正确的 MIT 许可证及版权声明。
+- 部署：本次未部署到启动器 mods 目录。
+
+2026-08-24 22:14
+- 最终发布版本：General Tools 1.21.1 NeoForge 由 V1.5.1 更新为 V1.5.2。
+- 版本配置：gradle.properties 的 mod_version 更新为 1.5.2，README 同步更新构建产物名称。
+- 构建：执行 gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL in 7s。
+- 验证：generaltoolsV1.5.2_1.21.1NeoForge.jar 内部版本为 1.5.2、许可证为 MIT，并包含 META-INF/LICENSE_generaltools.txt。
+- 发布文件：已复制到项目总目录；本次未部署到启动器 mods 目录。
+2026-08-29
+- 统一外观与有效模式：getEffectiveMode 解析最终可用工具模式后立即同步 CustomModelData，客户端目视切换也复用同一解析入口。
+- 空槽或受保护的不可用工具统一回退 NONE，避免仅显示工具贴图但实际未委托槽内工具。
+- 蜘蛛网明确识别为剑模式，使自动模式委托槽内剑的破坏速度和回调。
+- 构建：gradlew.bat build --console=plain --offline --rerun-tasks，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（Jade 式工具识别）
+- 自动模式改为逐一测试槽内真实工具，通过 isCorrectToolForDrops 或相对空手更高的 getDestroySpeed 判断工具是否适合目标方块。
+- 多个工具同时有效时按剪刀、剑、镐、斧、铲、锄排序；蜘蛛网同时支持剪刀和剑时优先剪刀，缺少剪刀时回退剑。
+- 保留原版 mineable_with_* 与蜘蛛网规则作为无候选命中时的类型兜底；不添加 Jade 运行依赖。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（自动模式倒序匹配）
+- 多工具候选改为按槽位倒序匹配：剪刀、锄、铲、斧、镐、剑；打火石不参与挖掘匹配。
+- 蜘蛛网同时支持剑和剪刀时优先选择靠后的剪刀槽。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（移除蜘蛛网硬编码）
+- 删除 Blocks.COBWEB 到剑模式的专用分支及无用导入；蜘蛛网现完全由槽内真实工具的正确采集/破坏速度测试和倒序优先级识别。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（发布 V1.5.3）
+- 版本号由 1.5.2 更新为 1.5.3，README 同步更新构建产物名称。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；产物 generaltoolsV1.5.3_1.21.1NeoForge.jar。
+- 准备提交并推送至 GitHub 分支 1.21.1NeoForge。
+2026-08-29（模式轮盘）
+- 新增默认 G 键的可配置模式轮盘快捷键；长按 200ms 打开、不暂停游戏，松开确认，Esc/死亡/离开主手/切换界面取消。
+- 轮盘以打开瞬间鼠标位置为中心，中心 25px 选择自动模式；固定锚点为 12点剑、2点镐、3点斧、4点打火石、6点扳手、8点剪刀、9点锄、10点铲，并按最近方向选区。
+- 空槽模式灰显且不可确认，扳手始终可选；新增 play-to-server ModeSetPayload，确认时仅发送一次。
+- 修复 zh_cn.json 历史编码/JSON 损坏并增加轮盘与快捷键翻译。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；本次未部署。
+2026-08-29（测试部署）
+- 旧 generaltoolsV1.5.2_1.21.1NeoForge.jar 已备份至项目旧版本目录并从测试实例 mods 移除。
+- 已部署 generaltoolsV1.5.3_1.21.1NeoForge.jar 至启动器 1.21.1-NeoForge_21.1.248/mods，供游戏内测试。
+2026-08-29（修复轮盘闪烁）
+- 原因：打开 Screen 时 Minecraft 清空 KeyMapping 按下状态，tick 误判 G 已松开并关闭；键盘重复事件又重新打开，形成持续闪烁。
+- 修复：轮盘改为监听真实 keyReleased 事件确认，不再在 Screen tick 中轮询 KeyMapping.isDown；死亡和主手变更取消逻辑保留。
+- 构建成功；已备份测试实例中的轮盘初版 1.5.3，并部署修复版至 1.21.1 NeoForge 测试实例。
+2026-08-29（轮盘居中与等分）
+- 轮盘中心固定为 GUI 缩放后的屏幕中心，移除打开瞬间鼠标坐标作为中心的逻辑，解决巨大位置偏移。
+- 8 个模式选择区域严格按 45° 等分；顺时针为剑、镐、斧、打火石、扳手、剪刀、锄、铲。
+- 构建成功，已备份上一测试 JAR并部署新构建至 NeoForge 测试实例。
+2026-08-29（真实圆弧轮盘）
+- 轮盘由大量正方形采样改为 POSITION_COLOR 三角形网格，绘制连续的环形扇区与实心圆形自动区域。
+- 扳手锚点改为直接绘制 generaltools:item/swiss_knife_wrench 对应的瑞士刀扳手模式贴图。
+- 构建成功，已备份方块采样轮盘 JAR并部署至 NeoForge 测试实例。
+2026-08-29（修复圆弧轮盘颜色缺失）
+- 原因：GUI 全屏遮罩与自定义扇形位于同一深度，深度测试丢弃后绘制的扇形顶点。
+- 修复：绘制扇形期间关闭深度测试与深度写入、重置着色器颜色，完成后恢复渲染状态。
+- 构建成功，已备份无颜色版本并部署至 NeoForge 测试实例。
+2026-08-29（第二次修复圆弧不可见）
+- 深度状态修复实测无效；进一步定位为 GUI Y 轴方向导致三角形绕序被背面剔除，同时即时绘制与 GuiGraphics 批次可能顺序冲突。
+- 绘制扇形期间关闭面剔除，并在自定义顶点绘制前后调用 GuiGraphics.flush；构建成功并部署 NeoForge 测试实例。
+2026-08-29（轮盘触发延迟）
+- 模式轮盘快捷键长按阈值由 200ms 缩短为 50ms；构建成功并部署 NeoForge 测试实例，旧 JAR 已备份。
+2026-08-29（AUTO 文本）
+- 轮盘中心自动模式文字由本地化“自动”改为固定“AUTO”，与物品 GUI 的自动按钮一致；构建并部署 NeoForge 测试实例。
+
+2026-09-25（打火石方块交互代理）
+- 修复瑞士刀打火石模式无法点燃 TNT：原实现仅在方块完成手持物检查后代理槽内打火石的 Item.useOn，TNT 检查时看到的仍是瑞士刀。
+- 新增 RightClickBlock 早期方块交互代理：打火石模式下临时将实际交互手替换为槽内真实打火石，再调用目标方块的 useItemOn，使原版 TNT 及采用相同手持物检查机制的模组方块能够识别打火石。
+- 方块消费或拒绝交互时取消后续瑞士刀交互，避免重复执行；方块返回 PASS 时保留原有 Item.useOn 委托作为放火、营火和蜡烛等行为的兜底。
+- 代理结束后恢复瑞士刀，并将槽内工具的耐久、充能及其它状态变化写回；withToolInHand 改为泛型，以同时支持 InteractionResult 与 1.21.1 的 ItemInteractionResult。
+- 本次仅修改 1.21.1 NeoForge 版本，1.20.1 Forge 暂未加入该功能。
+- 构建：gradlew.bat build --console=plain，BUILD SUCCESSFUL in 5s；产物 build/libs/generaltoolsV1.5.3_1.21.1NeoForge.jar，大小 57697 字节；尚待游戏内验证 TNT、模组可点燃方块及耐久是否仅消耗一次。
+
+2026-09-25（发布 V1.5.4）
+- 版本号由 1.5.3 更新为 1.5.4，README 同步更新构建产物名称。
+- 1.5.4 包含本日新增的打火石 RightClickBlock 早期方块交互代理；功能实现未再改变。
+- 构建：gradlew.bat build --console=plain --offline，BUILD SUCCESSFUL；产物 build/libs/generaltoolsV1.5.4_1.21.1NeoForge.jar，大小 57697 字节；本次未部署，尚待游戏内验证。

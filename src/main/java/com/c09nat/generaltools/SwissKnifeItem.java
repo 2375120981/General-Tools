@@ -11,6 +11,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -94,9 +95,8 @@ public class SwissKnifeItem extends Item {
         return result == InteractionResult.PASS && player.isCrouching() ? InteractionResult.FAIL : result;
     }
 
-    private static InteractionResult withToolInHand(Player player, InteractionHand hand, ItemStack tool,
-                                                     Supplier<InteractionResult> action,
-                                                     ItemStack knife, SwissKnifeMode mode) {
+    private static <T> T withToolInHand(Player player, InteractionHand hand, ItemStack tool,
+                                        Supplier<T> action, ItemStack knife, SwissKnifeMode mode) {
         ItemStack original = player.getItemInHand(hand);
         ItemStack backup = tool.copy();
         player.setItemInHand(hand, tool);
@@ -105,6 +105,34 @@ public class SwissKnifeItem extends Item {
             ItemStack resultingTool = protectDurability(backup, player.getItemInHand(hand));
             player.setItemInHand(hand, original);
             setSlotStack(knife, mode, resultingTool);
+        }
+    }
+
+    /**
+     * 方块会先于物品的 useOn 检查玩家手中的物品。打火石模式必须在这一阶段就让方块看到
+     * 槽内的真实打火石，否则 TNT 以及采用相同实现方式的模组方块只会看到瑞士刀。
+     */
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        Player player = event.getEntity();
+        InteractionHand hand = event.getHand();
+        ItemStack knife = player.getItemInHand(hand);
+        if (!(knife.getItem() instanceof SwissKnifeItem)) return;
+
+        Level level = event.getLevel();
+        BlockState state = level.getBlockState(event.getPos());
+        if (getEffectiveMode(knife, state) != SwissKnifeMode.FLINT_AND_STEEL) return;
+
+        ItemStack flintAndSteel = getSlotStack(knife, SwissKnifeMode.FLINT_AND_STEEL);
+        if (flintAndSteel.isEmpty()) return;
+
+        ItemInteractionResult result = withToolInHand(player, hand, flintAndSteel,
+                () -> state.useItemOn(flintAndSteel, level, player, hand, event.getHitVec()),
+                knife, SwissKnifeMode.FLINT_AND_STEEL);
+
+        if (result.consumesAction() || result == ItemInteractionResult.FAIL) {
+            event.setCanceled(true);
+            event.setCancellationResult(result.result());
         }
     }
 
